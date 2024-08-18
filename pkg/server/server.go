@@ -7,6 +7,11 @@ import (
 	"sync"
 )
 
+type ConnectionHandler interface {
+	Welcome() error
+	Update() error
+}
+
 type server struct {
 	Addr      string        // Address the server will listen on
 	Port      string        // Listening Port
