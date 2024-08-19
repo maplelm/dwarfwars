@@ -18,7 +18,7 @@ func main() {
 	}
 	m := tui.OptionScreenInit()
 	m.Add("Shutdown", &serverShutdown{false})
-	op := tea.NewProgram(tui.OptionScreenInit())
+	op := tea.NewProgram(m)
 	_, err = op.Run()
 	if err != nil {
 		fmt.Printf("Bubbletea Error: %s\n", err)

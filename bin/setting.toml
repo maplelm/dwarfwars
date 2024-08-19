@@ -1,0 +1,10 @@
+#######################
+# Dwarf Wars Settings #
+#######################
+
+# Log Settings
+LogFileName="log.log"
+LogPath="./logs"
+LogMaxSize = 5 # in megabytes
+LogMaxAge = 24 # in hours
+

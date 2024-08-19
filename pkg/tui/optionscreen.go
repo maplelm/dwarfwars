@@ -18,8 +18,8 @@ type OptionScreen struct {
 	Options map[string]Option
 }
 
-func OptionScreenInit() *OptionScreen {
-	return &OptionScreen{
+func OptionScreenInit() OptionScreen {
+	return OptionScreen{
 		cursor:  0,
 		Options: make(map[string]Option),
 	}
@@ -43,7 +43,7 @@ func (os OptionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				os.cursor--
 			}
 		//case "h", "left":
-		case "l", "right":
+		case "l", "right", "enter", " ":
 			index := 0
 			for _, v := range os.Options {
 				if index == os.cursor {
@@ -51,11 +51,13 @@ func (os OptionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						v.Disable()
 					} else {
 						v.Enable()
+						return os, tea.Quit
 					}
 					break
 				}
 				index++
 			}
+		case "ctrl+c", "q":
 		}
 	default:
 		log.Printf("Unhandled msg: %s", reflect.TypeOf(msg).Kind())
@@ -64,7 +66,7 @@ func (os OptionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (os OptionScreen) View() string {
-	s := "Select Option\n"
+	s := fmt.Sprintf("Select Option (%d)\n", len(os.Options))
 	cpos := 0
 	c := ""
 	for k := range os.Options {
@@ -78,12 +80,11 @@ func (os OptionScreen) View() string {
 	return s
 }
 
-func (os *OptionScreen) Add(key string, opt Option) error {
-	if _, ok := os.Options[key]; ok {
-		return fmt.Errorf("%s already exists as an option", key)
+func (os OptionScreen) Add(key string, opt Option) OptionScreen {
+	if _, ok := os.Options[key]; !ok {
+		os.Options[key] = opt
 	}
-	os.Options[key] = opt
-	return nil
+	return os
 }
 
 func (os *OptionScreen) Remove(key string) error {
