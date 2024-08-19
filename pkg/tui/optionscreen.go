@@ -3,39 +3,47 @@ package tui
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"log"
-	"reflect"
+	lg "github.com/charmbracelet/lipgloss"
+	//"log"
+	//"reflect"
 )
 
-type Option interface {
-	Enable() error
-	Disable() error
+type OptionSetter interface {
+	Enable(tea.Model) (tea.Model, tea.Cmd)
+	Disable(tea.Model) (tea.Model, tea.Cmd)
 	State() bool
 }
 
-type OptionScreen struct {
-	cursor  int
-	Options map[string]Option
+type OptionMenu struct {
+	cursor        int
+	labels        []string
+	options       map[int]OptionSetter
+	MainStyle     lg.Style
+	ItemStyle     lg.Style
+	SelectedStyle lg.Style
+	Title         string
 }
 
-func OptionScreenInit() OptionScreen {
-	return OptionScreen{
+func OptionScreenInit(title string) OptionMenu {
+	return OptionMenu{
 		cursor:  0,
-		Options: make(map[string]Option),
+		labels:  []string{},
+		options: make(map[int]OptionSetter),
+		Title:   title,
 	}
 }
 
-func (os OptionScreen) Init() tea.Cmd {
+func (os OptionMenu) Init() tea.Cmd {
 	// Do nothing on startup
 	return nil
 }
 
-func (os OptionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (os OptionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m := msg.(type) {
 	case tea.KeyMsg:
 		switch m.String() {
 		case "j", "down":
-			if os.cursor < len(os.Options)-1 {
+			if os.cursor < len(os.options)-1 {
 				os.cursor++
 			}
 		case "k", "up":
@@ -44,53 +52,44 @@ func (os OptionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		//case "h", "left":
 		case "l", "right", "enter", " ":
-			index := 0
-			for _, v := range os.Options {
-				if index == os.cursor {
-					if v.State() {
-						v.Disable()
-					} else {
-						v.Enable()
-						return os, tea.Quit
-					}
-					break
-				}
-				index++
+			if os.options[os.cursor].State() {
+				return os.options[os.cursor].Disable(os)
 			}
+			return os.options[os.cursor].Enable(os)
 		case "ctrl+c", "q":
+			return os, tea.Quit
 		}
 	default:
-		log.Printf("Unhandled msg: %s", reflect.TypeOf(msg).Kind())
+		//log.Printf("Unhandled msg: %s", reflect.TypeOf(msg).Kind())
 	}
 	return os, nil
 }
 
-func (os OptionScreen) View() string {
-	s := fmt.Sprintf("Select Option (%d)\n", len(os.Options))
-	cpos := 0
-	c := ""
-	for k := range os.Options {
-		if cpos == os.cursor {
-			c = ">"
+func (os OptionMenu) View() string {
+	output := fmt.Sprintf("%s\n", os.Title)
+	for i, k := range os.labels {
+		if i == os.cursor {
+			output += fmt.Sprintf("%s\n", os.SelectedStyle.Render(fmt.Sprintf(" > %s", k)))
 		} else {
-			c = " "
+			output += fmt.Sprintf("%s\n", os.ItemStyle.Render(fmt.Sprintf("   %s", k)))
 		}
-		s += fmt.Sprintf("# %s %s\n", c, k)
 	}
-	return s
+	return fmt.Sprintf("%s\n", os.MainStyle.Render(output))
 }
 
-func (os OptionScreen) Add(key string, opt Option) OptionScreen {
-	if _, ok := os.Options[key]; !ok {
-		os.Options[key] = opt
-	}
+func (os OptionMenu) Add(key string, opt OptionSetter) OptionMenu {
+	os.options[len(os.labels)] = opt
+	os.labels = append(os.labels, key)
 	return os
 }
 
-func (os *OptionScreen) Remove(key string) error {
-	if _, ok := os.Options[key]; !ok {
-		return fmt.Errorf("%s does not exist as an option", key)
+func (os *OptionMenu) Remove(key string) error {
+	for k, v := range os.labels {
+		if key == v {
+			delete(os.options, k)
+			os.labels = append(os.labels[:k], os.labels[k:]...)
+			return nil
+		}
 	}
-	delete(os.Options, key)
-	return nil
+	return fmt.Errorf("%s does not exist as an option", key)
 }

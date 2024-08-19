@@ -12,7 +12,7 @@ type ConnectionHandler interface {
 	Update() error
 }
 
-type server struct {
+type Server struct {
 	Addr      string        // Address the server will listen on
 	Port      string        // Listening Port
 	Ln        net.Listener  // Used to listen for and accept connections
@@ -21,8 +21,8 @@ type server struct {
 	waitGroup sync.WaitGroup
 }
 
-func New(addr, port string) (s *server, err error) {
-	s = new(server)
+func New(addr, port string) (s *Server, err error) {
+	s = new(Server)
 	s.Addr = addr
 	s.Port = port
 	s.Quitting = false
@@ -31,11 +31,11 @@ func New(addr, port string) (s *server, err error) {
 	return
 }
 
-func (s *server) FullAddr() string {
+func (s *Server) FullAddr() string {
 	return fmt.Sprintf("%s:%s", s.Addr, s.Port)
 }
 
-func (s *server) Start() (err error) {
+func (s *Server) Start() (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.listen(ctx)
 	<-s.exit
@@ -43,12 +43,12 @@ func (s *server) Start() (err error) {
 	return
 }
 
-func (s *server) Stop() {
+func (s *Server) Stop() {
 	s.exit <- struct{}{}
 	s.waitGroup.Wait()
 }
 
-func (s *server) listen(ctx context.Context) (err error) {
+func (s *Server) listen(ctx context.Context) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
 	for {
@@ -61,7 +61,7 @@ func (s *server) listen(ctx context.Context) (err error) {
 	}
 }
 
-func (s *server) accept(ctx context.Context) (err error) {
+func (s *Server) accept(ctx context.Context) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
 	for {
@@ -74,6 +74,6 @@ func (s *server) accept(ctx context.Context) (err error) {
 	}
 }
 
-func (s *server) close() (err error) {
+func (s *Server) close() (err error) {
 	return
 }

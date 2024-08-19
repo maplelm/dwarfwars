@@ -1,7 +1,7 @@
 package tcp
 
 import (
-	"encoding/binary"
+	//"encoding/binary"
 	"fmt"
 	"net"
 	"sync"
