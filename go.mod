@@ -2,7 +2,10 @@ module github.com/maplelm/dwarfwars
 
 go 1.22.1
 
-require github.com/charmbracelet/bubbletea v0.27.0
+require (
+	github.com/BurntSushi/toml v1.4.0
+	github.com/charmbracelet/bubbletea v0.27.0
+)
 
 require (
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
