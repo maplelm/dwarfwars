@@ -62,7 +62,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 func (m Menu) View() string {
-	output := fmt.Sprintf(" %s ", m.Title)
+	output := fmt.Sprintf(" %s \n", m.Title)
 	for i, l := range m.labels {
 		if m.cursor == i {
 			output += fmt.Sprintf(" %c %s\n", m.CursorIcon, m.SelectedStyle.Render(l))

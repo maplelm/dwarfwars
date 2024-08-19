@@ -17,7 +17,6 @@ func main() {
 
 	var (
 		opts Config
-		//sysLogger *log.Logger
 	)
 
 	/////////////////////////////////////
