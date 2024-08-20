@@ -29,7 +29,7 @@ func TestGetSettings(t *testing.T) {
 		t.Fatalf("Failed to get settings data, %s\n", err)
 	}
 
-	display, _ := toml.Marshal(*data)
+	display, _ := toml.Marshal(data)
 	t.Logf("Successfully got data, from memory, %s", string(display))
 
 	cwd, err := os.Getwd()
@@ -38,10 +38,10 @@ func TestGetSettings(t *testing.T) {
 	if err != nil && d == nil {
 		t.Fatalf("Failed to get Toml data from file, %s", err)
 	}
-	newdata, err := Get[Config]("testfilekey")
+	newdata, err := Get[any]("testfilekey")
 	if err != nil {
 		t.Fatalf("Failed to get settings data, %s\n", err)
 	}
-	display, _ = toml.Marshal(*newdata)
+	display, _ = toml.Marshal(newdata)
 	t.Logf("Successfully got data from file\n %s\n", string(display))
 }

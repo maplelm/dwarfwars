@@ -2,10 +2,11 @@ package settings
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"os"
 	"path/filepath"
 	"reflect"
+
+	"github.com/BurntSushi/toml"
 )
 
 var (
@@ -50,20 +51,36 @@ func LoadFromJson(key string, data []byte) (settingsData interface{}, err error)
 	return
 }
 
-func Get[T any](key string) (dat *T, err error) {
-	if dat, ok := data[key]; !ok {
-		return nil, fmt.Errorf("settings.Get: settings with key %s does not exist", key)
-	} else {
-		switch v := dat.(type) {
-		case T:
-			return &v, nil
-		default:
-			if zero := []T{}; reflect.TypeOf(v).AssignableTo(reflect.TypeOf(zero)) {
-				r := v.(T)
-				return &r, nil
-			} else {
-				return nil, fmt.Errorf("type %T is not assignable to type %T", reflect.TypeOf(v).Name(), reflect.TypeOf(zero).Name())
-			}
-		}
+func Get[T any](key string) (dat T, err error) {
+	var settingsData interface{}
+
+	settingsData, exists := data[key]
+	if reflect.TypeOf(dat).Kind() == reflect.Interface {
+		dat = settingsData.(T)
 	}
+	if !exists {
+		return dat, fmt.Errorf("settings.Get: key %s does not exist", key)
+	}
+	var sdt reflect.Type = reflect.TypeOf(settingsData)
+	var dt reflect.Type = reflect.TypeOf(dat)
+	fmt.Println("Printing variable Types:")
+	fmt.Printf("type of settingsData: %s\ntype of dat: %s\n", sdt.Name(), dt.Name())
+	return
+	/*
+		switch typedSettings := settingsData.(type) {
+		case T:
+			return &typedSettings, nil
+		default:
+			bytes, err := toml.Marshal(typedSettings)
+			if err != nil {
+				return nil, fmt.Errorf("settings.Get: %s", err)
+			}
+			var returnVal T
+			err = toml.Unmarshal(bytes, &returnVal)
+			if err != nil {
+				return nil, fmt.Errorf("settings.Get: %s", err)
+			}
+			return &returnVal, nil
+		}
+	*/
 }
