@@ -84,7 +84,7 @@ func (m Menu) View() string {
 			line = fmt.Sprintf("   %s\n", m.ItemStyle.Render(l))
 		}
 		if m.enabled[i] {
-			output += lg.NewStyle().Foreground(lg.Color("#00FF00")).Render(line)
+			output += fmt.Sprintf("%s\n", lg.NewStyle().Foreground(lg.Color("#00FF00")).Render(line))
 		} else {
 			output += line
 		}

@@ -3,13 +3,13 @@
 #######################
 
 # Log Settings
-[LogSettings]
+["Log Settings"]
 LogFileName="log.log"
 LogPollRate=60000 # in miliseconds
 LogPath="./logs"
 LogMaxSize = 5 # in megabytes
 
-[ServerSettings]
+["Server Settings"]
 Address=""
 Port=3000
 Idle_Timeout=1000 # miliseconds

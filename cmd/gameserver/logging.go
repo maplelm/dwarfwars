@@ -29,9 +29,13 @@ func NewRotationWriter(path, name string, pollrate time.Duration, maxsize int64)
 
 func (rw *RotationWriter) Write(b []byte) (n int, err error) {
 	if rw.file == nil || time.Since(rw.lastRotate) >= rw.rotateCheck {
-		if err = rw.Rotate(); err != nil {
+		err = rw.Rotate()
+		if err != nil {
+			fmt.Printf("RotationWriter Failed: %s", err)
+			os.Exit(1)
 			return
 		}
+
 		rw.lastRotate = time.Now()
 	}
 	return rw.file.Write(b)
@@ -43,11 +47,16 @@ func (rw *RotationWriter) Rotate() (err error) {
 		rw.file.Close()
 		rw.file = nil
 	}
+
 	info, err := os.Stat(file)
 	if err == nil && info.Size()/1_000_000 > rw.maxSize {
 		err = os.Rename(file, fmt.Sprintf("%s_%s_%s.log", file, time.Now().Format(time.DateOnly), time.Now().Format(time.TimeOnly)))
 	}
-	rw.file, err = os.Create(file)
+
+	rw.file, err = os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		fmt.Printf("RotationWriter.Rotate(): %s\n", err)
+	}
 	return
 }
 
