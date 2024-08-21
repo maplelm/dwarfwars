@@ -32,6 +32,16 @@ type Menu struct {
 	ItemStyle     lg.Style
 }
 
+func NewMenu(icon rune, title string, ms, ss, is lg.Style) Menu {
+	return Menu{
+		CursorIcon:    icon,
+		Title:         title,
+		MainStyle:     ms,
+		SelectedStyle: ss,
+		ItemStyle:     is,
+	}
+}
+
 func (m Menu) Init() tea.Cmd {
 	return nil
 }
