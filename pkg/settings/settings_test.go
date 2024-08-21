@@ -2,6 +2,7 @@ package settings
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/BurntSushi/toml"

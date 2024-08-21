@@ -2,22 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
 	"github.com/maplelm/dwarfwars/pkg/server"
+	"github.com/maplelm/dwarfwars/pkg/settings"
 	"github.com/maplelm/dwarfwars/pkg/tui"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 )
 
 func main() {
-
-	var (
-		opts Config
-	)
 
 	/////////////////////////////////////
 	// getting settings from toml file //
@@ -36,11 +31,14 @@ func main() {
 		settingsName = "settings.toml"
 	}
 
-	b, err := os.ReadFile(filepath.Join(settingsPath, settingsName))
-
-	err = toml.Unmarshal(b, &opts)
+	_, err := settings.LoadFromTomlFile("Main", settingsPath, settingsName)
 	if err != nil {
-		log.Fatalf("Failed to Unmarshal %s\n", filepath.Join(settingsPath, settingsName))
+		log.Fatalf("Main Thread: Failed to load main TOML settings file, %s", err)
+	}
+
+	opts, err := settings.Get[settings.Config]("Main")
+	if err != nil {
+		log.Fatalf("Main Thread: Failed to get Main settings from memory, %s", err)
 	}
 
 	//////////////////////////////
@@ -54,6 +52,10 @@ func main() {
 	)
 	log.SetPrefix("System: ")
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+	//////////////////////////
+	// Setup Main TUI Model //
+	//////////////////////////
 
 	/////////////////////////
 	// Starting TCP Server //

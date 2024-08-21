@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
-
+	//"reflect"
 	"github.com/BurntSushi/toml"
 )
 
 var (
-	data map[string]interface{} = make(map[string]interface{})
+	dataCache map[string]interface{} = make(map[string]interface{})
 )
 
 func LoadFromTomlFile(key, path, name string) (settingData *interface{}, err error) {
-	if d, ok := data[key]; ok {
+	if d, ok := dataCache[key]; ok {
 		return &d, fmt.Errorf("LoadFromTomlFile: Key %s is in use", key)
 	}
 	fileData, err := os.ReadFile(filepath.Join(path, name))
@@ -26,12 +25,12 @@ func LoadFromTomlFile(key, path, name string) (settingData *interface{}, err err
 	if err != nil {
 		return nil, fmt.Errorf("LoadFromToml: %s", err)
 	}
-	data[key] = settingData
+	dataCache[key] = settingData
 	return
 }
 
 func LoadFromToml(key string, d []byte) (settingsData *interface{}, err error) {
-	if d, ok := data[key]; ok {
+	if d, ok := dataCache[key]; ok {
 		return &d, fmt.Errorf("LoadFromToml: Key %s in use", key)
 	}
 	settingsData = new(interface{})
@@ -39,7 +38,7 @@ func LoadFromToml(key string, d []byte) (settingsData *interface{}, err error) {
 	if err != nil {
 		return nil, err
 	}
-	data[key] = settingsData
+	dataCache[key] = settingsData
 	return
 }
 
@@ -51,36 +50,25 @@ func LoadFromJson(key string, data []byte) (settingsData interface{}, err error)
 	return
 }
 
-func Get[T any](key string) (dat T, err error) {
-	var settingsData interface{}
-
-	settingsData, exists := data[key]
-	if reflect.TypeOf(dat).Kind() == reflect.Interface {
-		dat = settingsData.(T)
+func Get[T any](key string) (dat *T, err error) {
+	d, exist := dataCache[key]
+	if !exist {
+		return nil, fmt.Errorf("settings.Get: key %s does not exist\n", err)
 	}
-	if !exists {
-		return dat, fmt.Errorf("settings.Get: key %s does not exist", key)
-	}
-	var sdt reflect.Type = reflect.TypeOf(settingsData)
-	var dt reflect.Type = reflect.TypeOf(dat)
-	fmt.Println("Printing variable Types:")
-	fmt.Printf("type of settingsData: %s\ntype of dat: %s\n", sdt.Name(), dt.Name())
-	return
-	/*
-		switch typedSettings := settingsData.(type) {
-		case T:
-			return &typedSettings, nil
-		default:
-			bytes, err := toml.Marshal(typedSettings)
-			if err != nil {
-				return nil, fmt.Errorf("settings.Get: %s", err)
-			}
-			var returnVal T
-			err = toml.Unmarshal(bytes, &returnVal)
-			if err != nil {
-				return nil, fmt.Errorf("settings.Get: %s", err)
-			}
-			return &returnVal, nil
+	switch value := d.(type) {
+	case T:
+		return &value, nil
+	default:
+		bytes, err := toml.Marshal(value)
+		if err != nil {
+			return nil, fmt.Errorf("settings.Get: failed to Marshal data, %s", err)
 		}
-	*/
+		var formatedData T
+		err = toml.Unmarshal(bytes, &formatedData)
+		if err != nil {
+			return nil, fmt.Errorf("settings.Get: failed to Unmarshal data, %s", err)
+		}
+		return &formatedData, nil
+	}
+
 }
