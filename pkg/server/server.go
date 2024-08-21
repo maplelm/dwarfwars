@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 )
@@ -51,25 +52,56 @@ func (s *Server) Stop() {
 func (s *Server) listen(ctx context.Context) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
+	go func() error {
+		for {
+			conn, err := s.Ln.Accept()
+			if err != nil {
+				select {
+				case <-ctx.Done():
+					// Server is shutting down. no error to report
+					return ctx.Err()
+				default:
+					log.Printf("Server Listener Failed: %s", err)
+				}
+				continue
+			}
+			go s.accept(ctx, conn)
+		}
+	}()
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			fmt.Println("listen loop")
+			s.Ln.Accept()
 		}
 	}
 }
 
-func (s *Server) accept(ctx context.Context) (err error) {
+func (s *Server) accept(ctx context.Context, conn net.Conn) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
+	defer conn.Close()
+	log.Printf("Server Accepted Connection from %s", conn.RemoteAddr())
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			fmt.Println("accept loop")
+			// Making the server echo for now
+			var req []byte = []byte{}
+			rn, err := conn.Read(req)
+			if err != nil {
+				log.Printf("Conn (%s) Error: %s", conn.RemoteAddr(), err)
+			}
+			wn, err := conn.Write(req)
+			if err != nil {
+				log.Printf("Conn (%s_ Error: %s", conn.RemoteAddr(), err)
+			}
+			if wn != rn {
+				log.Printf("Conn (%s) Warning: read and write data lengths do not match R: %d, W: %d", conn.RemoteAddr(), rn, wn)
+			}
+
 		}
 	}
 }

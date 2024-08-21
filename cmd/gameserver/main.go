@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
 )
 
 func main() {
