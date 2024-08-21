@@ -10,6 +10,6 @@ LogPath="./logs"
 LogMaxSize = 5 # in megabytes
 
 [ServerSettings]
-Address="127.0.0.1"
+Address=""
 Port=3000
 Idle_Timeout=1000 # miliseconds
