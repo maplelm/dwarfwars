@@ -7,17 +7,18 @@ import (
 	"log"
 )
 
-type Action func() (tea.Cmd, error)
+// Takes in state and returns state and bubble team command (can fail)
+type Action func(bool) (cmd tea.Cmd, state bool, err error)
 
-func (f Action) action() (tea.Cmd, error) {
-	return f()
+func (f Action) action(b bool) (cmd tea.Cmd, state bool, err error) {
+	return f(b)
 }
 
 type ActionHandler interface {
-	action() (tea.Cmd, error)
+	action(bool) (cmd tea.Cmd, state bool, err error)
 }
 
-func CreateAction(f func() (tea.Cmd, error)) ActionHandler {
+func CreateAction(f func(bool) (cmd tea.Cmd, state bool, err error)) ActionHandler {
 	return Action(f)
 }
 
@@ -25,6 +26,7 @@ type Menu struct {
 	cursor        int
 	CursorIcon    rune
 	labels        []string
+	enabled       []bool
 	actions       []ActionHandler
 	Title         string
 	MainStyle     lg.Style
@@ -59,11 +61,12 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 		case "l", "right", "enter", " ":
-			c, e := m.actions[m.cursor].action()
+			c, s, e := m.actions[m.cursor].action(m.enabled[m.cursor])
 			if e != nil {
 				log.Printf("Failed Action for %s: %s", m.labels[m.cursor], e)
 				return m, nil
 			}
+			m.enabled[m.cursor] = s // update state
 			return m, c
 		case "q", "ctrl+q":
 			return m, tea.Quit
@@ -72,18 +75,24 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 func (m Menu) View() string {
+	var line string
 	output := fmt.Sprintf(" %s \n", m.Title)
 	for i, l := range m.labels {
 		if m.cursor == i {
-			output += fmt.Sprintf(" %c %s\n", m.CursorIcon, m.SelectedStyle.Render(l))
+			line = fmt.Sprintf(" %c %s\n", m.CursorIcon, m.SelectedStyle.Render(l))
 		} else {
-			output += fmt.Sprintf("   %s\n", m.ItemStyle.Render(l))
+			line = fmt.Sprintf("   %s\n", m.ItemStyle.Render(l))
+		}
+		if m.enabled[i] {
+			output += lg.NewStyle().Foreground(lg.Color("#00FF00")).Render(line)
+		} else {
+			output += line
 		}
 	}
 	return m.MainStyle.Render(output)
 }
 
-func (m Menu) Add(l string, a func() (tea.Cmd, error)) Menu {
+func (m Menu) Add(l string, state bool, a func(bool) (tea.Cmd, bool, error)) Menu {
 	for _, v := range m.labels {
 		if v == l {
 			fmt.Printf("%s already exists in menu\n", l)
@@ -91,6 +100,7 @@ func (m Menu) Add(l string, a func() (tea.Cmd, error)) Menu {
 		}
 	}
 	m.labels = append(m.labels, l)
+	m.enabled = append(m.enabled, state)
 	m.actions = append(m.actions, Action(a))
 	return m
 }
@@ -99,6 +109,8 @@ func (m Menu) Remove(l string) Menu {
 	for i, v := range m.labels {
 		if v == l {
 			m.labels = append(m.labels[:i], m.labels[i:]...)
+			m.enabled = append(m.enabled[:i], m.enabled[i:]...)
+			m.actions = append(m.actions[:i], m.actions[i:]...)
 			return m
 		}
 	}

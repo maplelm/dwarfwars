@@ -52,7 +52,9 @@ func (s *Server) Stop() {
 func (s *Server) listen(ctx context.Context) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
-	go func() error {
+	go func(ctx context.Context) error {
+		s.waitGroup.Add(1)
+		defer s.waitGroup.Done()
 		for {
 			conn, err := s.Ln.Accept()
 			if err != nil {
@@ -66,8 +68,14 @@ func (s *Server) listen(ctx context.Context) (err error) {
 				continue
 			}
 			go s.accept(ctx, conn)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				log.Printf("Server Acccepted connection: %s", conn.RemoteAddr())
+			}
 		}
-	}()
+	}(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -104,8 +112,4 @@ func (s *Server) accept(ctx context.Context, conn net.Conn) (err error) {
 
 		}
 	}
-}
-
-func (s *Server) close() (err error) {
-	return
 }

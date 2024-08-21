@@ -63,30 +63,33 @@ func main() {
 	/////////////////////////
 	// Starting TCP Server //
 	/////////////////////////
-	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle()).
-		Add("Start Server", func() (cmd tea.Cmd, err error) {
+	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
+	mainMenu = mainMenu.
+		Add("Start Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
 			serv, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port))
 			if err != nil {
-				return tea.Quit, fmt.Errorf("Main Menu Start Server: %s", err)
+				return tea.Quit, false, fmt.Errorf("Main Menu Start Server: %s", err)
 			}
 			go func() {
 				waitgroup.Add(1)
 				defer waitgroup.Done()
 				serv.Start()
 			}()
+			s = true
 			return
 		}).
-		Add("Settings", func() (cmd tea.Cmd, err error) {
+		Add("Settings", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
 			var inter interface{} = *opts
 			settingsMenu := tui.NewSettingsMenu(&inter, '>', lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
 			p := tea.NewProgram(settingsMenu)
 			if _, err = p.Run(); err != nil {
-				return nil, fmt.Errorf("Settings Menu: %s", err)
+				return nil, state, fmt.Errorf("Settings Menu: %s", err)
 			}
+			s = state
 			return
 		}).
-		Add("Quit", func() (cmd tea.Cmd, err error) {
-			return tea.Quit, nil
+		Add("Quit", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
+			return tea.Quit, state, nil
 		})
 	op := tea.NewProgram(mainMenu)
 	_, err = op.Run()
