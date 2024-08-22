@@ -1,9 +1,5 @@
 package main
 
-/*
-	FIX: Program Locks up if you try and disable server after starting it.
-*/
-
 import (
 	"errors"
 	"fmt"
@@ -13,6 +9,7 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/settings"
 	"github.com/maplelm/dwarfwars/pkg/tui"
 	"log"
+	"net"
 	"os"
 	"sync"
 )
@@ -79,7 +76,7 @@ func main() {
 	//////////////////////////////
 	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
 	mainMenu = mainMenu.
-		Add("Start Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
+		Add("Start Auth Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
 			if !state {
 				log.Printf("(Dwarf Wars Server) Starting Server")
 				serv, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port))
@@ -97,6 +94,12 @@ func main() {
 				serv.Stop()
 				log.Printf("(TUI) Stopped Server")
 				s = false
+			}
+			return
+		}).
+		Add("Start Game Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
+			if !state {
+			} else {
 			}
 			return
 		}).
