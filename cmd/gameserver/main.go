@@ -1,6 +1,11 @@
 package main
 
+/*
+	FEAT: Toggle Server On & Off from the TUI, Currenty the whole program must be terminated once the server is started if you want to stop it.
+*/
+
 import (
+	"errors"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
@@ -19,12 +24,9 @@ func main() {
 		serv      *server.Server
 	)
 
-	// getting settings //
-	/*
-		checking for specified settings path/name in envirment variable
-			-> SETTINGS_PATH
-			-> SETTINGS_NAME
-	*/
+	/////////////////////////////
+	// Loading System Settings //
+	/////////////////////////////
 	settingsPath := os.Getenv("SETTINGS_PATH")
 	if len(settingsPath) == 0 {
 		settingsPath = "./"
@@ -57,13 +59,24 @@ func main() {
 	log.SetPrefix("System:")
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	//////////////////////////
-	// Setup Main TUI Model //
-	//////////////////////////
+	// Validating that log path exists
+	_, err = os.Stat(opts.Log.Path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			err = os.MkdirAll(opts.Log.Path, 0777)
+			if err != nil {
+				fmt.Printf("Failed to setup Logging Path, %s\n", err)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Printf("Failed to validate Log Path, %s\n", err)
+			os.Exit(1)
+		}
+	}
 
-	/////////////////////////
-	// Starting TCP Server //
-	/////////////////////////
+	//////////////////////////////
+	// Setting Up TUI / Actions //
+	//////////////////////////////
 	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
 	mainMenu = mainMenu.
 		Add("Start Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
