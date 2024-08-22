@@ -1,7 +1,7 @@
 package main
 
 /*
-	FEAT: Toggle Server On & Off from the TUI, Currenty the whole program must be terminated once the server is started if you want to stop it.
+	FIX: Program Locks up if you try and disable server after starting it.
 */
 
 import (
@@ -21,7 +21,7 @@ func main() {
 
 	var (
 		waitgroup sync.WaitGroup
-		serv      *server.Server
+		serv      *server.Server = nil
 	)
 
 	/////////////////////////////
@@ -80,18 +80,24 @@ func main() {
 	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
 	mainMenu = mainMenu.
 		Add("Start Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
-			log.Printf("(Dwarf Wars Server) Starting Server")
-			serv, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port))
-			if err != nil {
-				log.Printf("(Dwarf Wars Server) Failed to Create server, %s", err)
-				return tea.Quit, false, fmt.Errorf("Main Menu Start Server: %s", err)
+			if !state {
+				log.Printf("(Dwarf Wars Server) Starting Server")
+				serv, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port))
+				if err != nil {
+					log.Printf("(Dwarf Wars Server) Failed to Create server, %s", err)
+					return tea.Quit, false, fmt.Errorf("Main Menu Start Server: %s", err)
+				}
+				go func() {
+					waitgroup.Add(1)
+					defer waitgroup.Done()
+					serv.Start()
+				}()
+				s = true
+			} else {
+				serv.Stop()
+				log.Printf("(TUI) Stopped Server")
+				s = false
 			}
-			go func() {
-				waitgroup.Add(1)
-				defer waitgroup.Done()
-				serv.Start()
-			}()
-			s = true
 			return
 		}).
 		Add("Settings", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
