@@ -8,6 +8,7 @@ import (
 
 type Command struct {
 	Command uint16
+	Header  []byte
 	Data    []byte
 }
 
@@ -20,9 +21,10 @@ func (t *Command) UnmarshalBinary(b []byte) error {
 	}
 	b = b[1:]
 	// Getting the header
-	header := b[:HeaderSize]
+	t.Header = b[:HeaderSize]
 	b = b[HeaderSize:]
-	t.Command = binary.BigEndian.Uint16(header)
+	t.Command = binary.BigEndian.Uint16(t.Header[:commandBytes])
+	t.Length = 
 	t.Data = b
 
 	return nil

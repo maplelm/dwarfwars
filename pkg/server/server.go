@@ -1,9 +1,12 @@
 package server
 
 /*
+* WARNING: CURRENTLY NOT VALIDATING CONNECTIONS OR TRAFFIC.
+* WARNING: No Authentication is required.
+ *
  * FIX: need to acount for bytes not being sent all at once
  * FIX: Connections currently do not timeout leading to a runaway goruitines
- */
+*/
 
 import (
 	"context"
@@ -12,12 +15,12 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
-type ConnectionHandler interface {
-	Welcome() error
-	Update() error
-}
+const (
+	PoolPublic = iota
+)
 
 type Server struct {
 	Addr        string         // Address the server will listen on
@@ -26,17 +29,19 @@ type Server struct {
 	Quitting    bool           // If true server will shutdown
 	exit        chan struct{}  // used to close down the server
 	waitGroup   sync.WaitGroup // tracking goruitines for connections so they can shutdown properly
-	connections []*net.Conn
+	idleTimeout time.Duration
+	connPool    map[int][]net.Conn
 }
 
-func New(addr, port string) (s *Server, err error) {
+func New(addr, port string, timeout time.Duration) (s *Server, err error) {
 	s = new(Server)
 	s.Addr = addr
 	s.Port = port
 	s.Quitting = false
 	s.exit = make(chan struct{})
 	s.Ln, err = net.Listen("tcp", s.FullAddr())
-	s.connections = make([]*net.Conn, 10)
+	s.idleTimeout = timeout
+	s.connPool = make(map[int][]net.Conn)
 	return
 }
 
@@ -63,8 +68,6 @@ func (s *Server) listen(ctx context.Context) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
 	go func(ctx context.Context) error {
-		s.waitGroup.Add(1)
-		defer s.waitGroup.Done()
 		for {
 			conn, err := s.Ln.Accept()
 			if err != nil {
@@ -77,8 +80,8 @@ func (s *Server) listen(ctx context.Context) (err error) {
 				}
 				continue
 			}
-			s.connections = append(s.connections, &conn)
-			go s.accept(ctx, &conn)
+			s.connPool[PoolPublic] = append(s.connPool[PoolPublic], conn)
+			go s.accept(ctx, &s.connPool[PoolPublic][len(s.connPool[PoolPublic])-1])
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -90,9 +93,8 @@ func (s *Server) listen(ctx context.Context) (err error) {
 	for {
 		select {
 		case <-ctx.Done():
+			s.Ln.Close()
 			return ctx.Err()
-		default:
-			s.Ln.Accept()
 		}
 	}
 }

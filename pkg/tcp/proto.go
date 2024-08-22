@@ -8,3 +8,11 @@ const (
 	HeaderSize       byte = commandBytes + packetSizeBytes + versionBytes
 	MaxDataPerPacket int  = 65535 // bytes
 )
+
+const (
+	CmdWelcome = iota + 1
+	CmdClose
+	CmdKeepAlive
+	CmdEcho
+	CmdBroadcast
+)

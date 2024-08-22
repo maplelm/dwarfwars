@@ -23,5 +23,9 @@ Need to figure out how to close a socket connection when the client sends a FIN 
 
 I could also just use a database but I don't know how well that will scale, I probably don't need it to scale that much anyways as this will not be a very big product. I don't plan on it being anyways, we will get there when we get there if we get there. I am thinking that just using a log binary blob in a nosql database would work the best.
 
+#### Connections
+
+It looks like Go supports connection pooling. I want to look into that and see how I can implement that as I feel that is what I am trying to role myself anyways.
+
 ### Frontend
 
