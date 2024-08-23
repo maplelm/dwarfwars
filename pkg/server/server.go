@@ -73,7 +73,9 @@ func (s *Server) StartTCP(ctx context.Context) (err error) {
 }
 
 func (s *Server) StartUDP() (err error) {
-	addr, err := net.ResolveUDPAddr("udp", s.FullAddr())
+
+	//addr, err := net.ResolveUDPAddr("udp", s.FullAddr())
+
 	if err != nil {
 		return
 	}
@@ -93,34 +95,47 @@ func (s *Server) listen(ctx context.Context, l net.Listener) (err error) {
 		// TCP Listener //
 		//////////////////
 		for {
-			conn, err := l.Accept()
-			if err != nil {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				default:
-					log.Printf("(Server) TCP Accept Function Failed, continueing to listen: %s", err)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				conn, err := l.Accept()
+				if err != nil {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					default:
+						log.Printf("(Server) TCP Accept Function Failed, continueing to listen: %s", err)
+						continue
+					}
+				}
+				if _, ok := s.connPool[conn.RemoteAddr()]; !ok {
+					s.connPool[conn.RemoteAddr()] = conn
+				} else {
+					log.Printf(" Connection for %s already exists", conn.RemoteAddr().String())
 					continue
 				}
+				go s.accept(ctx, s.connPool[conn.RemoteAddr()])
 			}
-			if _, ok := s.connPool[conn.RemoteAddr()]; !ok {
-				s.connPool[conn.RemoteAddr()] = conn
-			} else {
-				log.Printf(" Connection for %s already exists", conn.RemoteAddr().String())
-				continue
-			}
-			go s.accept(ctx, s.connPool[conn.RemoteAddr()])
 		}
+
 	} else if l.Addr().Network() == "upd" {
 		//////////////////
 		// UDP Listener //
 		//////////////////
 		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+
+			}
 		}
 	} else {
 		/////////////////////
 		// UNKOWN Listener //
 		/////////////////////
+		log.Printf("(Dwarf Wars Server) Unsupported Listener type, Exiting")
 	}
 	return
 }
@@ -129,7 +144,7 @@ func (s *Server) accept(ctx context.Context, conn net.Conn) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
 
-	defer (*conn).Close()
+	defer conn.Close()
 
 	log.Printf("Server Accepted Connection from %s", conn.RemoteAddr())
 

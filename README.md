@@ -21,6 +21,11 @@ Need to figure out how to close a socket connection when the client sends a FIN 
 - Avro
 - CBOR
 
+
+### Choice
+
+I Am going to either go with Cap'n Proto, FlatBuffers or XML, I am not sure yet
+
 I could also just use a database but I don't know how well that will scale, I probably don't need it to scale that much anyways as this will not be a very big product. I don't plan on it being anyways, we will get there when we get there if we get there. I am thinking that just using a log binary blob in a nosql database would work the best.
 
 #### Connections

@@ -5,28 +5,26 @@
 ["Log Settings"]
 "Max Size" = 5 # Megabytes
 "File Name" = "log.log"
-Path = "./"
+Path = "./logs/"
 
 ["Game Server"]
 Address = ""
 Port = 3_000
 "Idle Timeout" = 300 # Miliseconds
 
+
+#####################################
+## AUTHENTICANTION DATABASE SERVER ##
+#####################################
 ["Database Servers".Auth]
-Address = "127.0.0.1"
-Port = 3_306
+Address = "localhost"
+Port = 3306
+Driver = "mysql"
+Trusted = false
 Username = "root"
 Password = "password"
-"Default DB" = "Users"
+"DB" = "USERS"
 Views = { }
-
-[["Database Servers".Auth.Tables.User_Login]]
-Name = "ID"
-Type = "INTEGER"
-"Auto Increment" = true
-"Primary Key" = false
-"Foriegn Key" = false
-"Null Allowed" = false
 
 [["Database Servers".Auth.Tables.User_Login]]
 Name = "UID"
@@ -62,14 +60,6 @@ Type = "datetime"
 Default = "CURRENT_TIMESTAMP()"
 
 [["Database Servers".Auth.Tables.Access_Logs]]
-Name = "ID"
-Type = "INTEGER"
-"Auto Increment" = true
-"Primary Key" = false
-"Foriegn Key" = false
-"Null Allowed" = false
-
-[["Database Servers".Auth.Tables.Access_Logs]]
 Name = "UID"
 Type = "VARCHAR(100)"
 "Auto Increment" = false
@@ -77,19 +67,25 @@ Type = "VARCHAR(100)"
 "Foriegn Key" = false
 "Null Allowed" = false
 
+
+############################
+## Game States SQL Server ##
+############################
 ["Database Servers".Stats]
-Address = "127.0.0.1"
-Port = 3_307
+Address = "localhost"
+Port = 3306
+Driver = "mysql"
+Trusted = false
 Username = "root"
 Password = "password"
-"Default DB" = "GDA"
+"DB" = "GAME_STATS"
 Views = { }
 
 [["Database Servers".Stats.Tables.Match_Events]]
 Name = "Match_ID"
 Type = "VARCHAR(255)"
 "Auto Increment" = false
-"Primary Key" = true
+"Primary Key" = false
 "Foriegn Key" = false
 "Null Allowed" = false
 
@@ -141,24 +137,22 @@ Type = "TEXT"
 "Foriegn Key" = false
 "Null Allowed" = true
 
+
+##########################
+## Game Data SQL Server ##
+##########################
 ["Database Servers".Game]
-Address = "127.0.0.1"
-Port = 3_308
+Address = "localhost"
+Port = 3306
 Username = "root"
 Password = "password"
-"Default DB" = "Worlds"
+Driver = "mysql"
+Trusted = false
+"DB" = "GAME_DATA"
 Views = { }
 
   ["Database Servers".Game.Tables]
   Archived_Games = [ ]
-
-    [["Database Servers".Game.Tables.Games]]
-    Name = "ID"
-    Type = "INTEGER"
-    "Auto Increment" = true
-    "Primary Key" = false
-    "Foriegn Key" = false
-    "Null Allowed" = false
 
     [["Database Servers".Game.Tables.Games]]
     Name = "Match_ID"

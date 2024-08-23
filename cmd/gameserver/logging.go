@@ -9,26 +9,29 @@ import (
 )
 
 type RotationWriter struct {
-	file        *os.File
-	name        string
-	dir         string
-	rotateCheck time.Duration
-	lastRotate  time.Time
-	maxSize     int64
+	file       *os.File
+	name       string
+	dir        string
+	lastRotate time.Time
+	maxSize    int64
 }
 
-func NewRotationWriter(path, name string, pollrate time.Duration, maxsize int64) *RotationWriter {
+func NewRotationWriter(path, name string, maxsize int64) *RotationWriter {
 	return &RotationWriter{
-		name:        name,
-		dir:         path,
-		lastRotate:  time.Unix(0, 0),
-		rotateCheck: pollrate,
-		maxSize:     maxsize,
+		name:       name,
+		dir:        path,
+		lastRotate: time.Unix(0, 0),
+		maxSize:    maxsize,
 	}
 }
 
 func (rw *RotationWriter) Write(b []byte) (n int, err error) {
-	if rw.file == nil || time.Since(rw.lastRotate) >= rw.rotateCheck {
+	tobig := false
+	info, err := os.Stat(filepath.Join(rw.dir, rw.name))
+	if err == nil && info.Size()/1_000_000 >= rw.maxSize {
+		tobig = true
+	}
+	if rw.file == nil || tobig {
 		err = rw.Rotate()
 		if err != nil {
 			fmt.Printf("RotationWriter Failed: %s", err)

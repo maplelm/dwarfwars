@@ -6,8 +6,25 @@ import (
 	"log"
 )
 
+/*
+Byte 0  : Version
+Byte 1-2: Length data - header
+Byte 3-4: Command
+Byte 5+ : Data
+
+General Data Structure (json for visual but not sure if it will be actual json)
+{
+	"Session ID": "123abc",
+	"UID": "Luke123vddk",
+	"Session Secret: "asdfwefcb32435fasdaf243",
+	"Command Relevent Data": [...]
+}
+
+*/
+
 type Command struct {
 	Command uint16
+	Length  int
 	Header  []byte
 	Data    []byte
 }
@@ -24,7 +41,7 @@ func (t *Command) UnmarshalBinary(b []byte) error {
 	t.Header = b[:HeaderSize]
 	b = b[HeaderSize:]
 	t.Command = binary.BigEndian.Uint16(t.Header[:commandBytes])
-	t.Length = 
+	t.Length = len(t.Header) + 2 + len(b)
 	t.Data = b
 
 	return nil

@@ -20,7 +20,11 @@ type connection struct {
 	WriteTimeout time.Duration
 }
 
-func NewConnection(c net.Conn) *connection {
+type ConnType interface {
+	net.TCPConn | net.UDPConn
+}
+
+func NewConnection[T ConnType](c T) *connection {
 	var id uint64
 	connectionIdMutex.Lock()
 	defer connectionIdMutex.Unlock()
@@ -31,9 +35,19 @@ func NewConnection(c net.Conn) *connection {
 		id = connectionIdCounter
 		connectionIdCounter++
 	}
-	return &connection{
-		Tcp: c,
-		Id:  id,
+	switch any(c).(type) {
+	case net.TCPConn:
+		return &connection{
+			Tcp: net.TCPConn(c),
+			Id:  id,
+		}
+	case net.UDPConn:
+		return &connection{
+			Udp: net.UDPConn(c),
+			Id:  id,
+		}
+	default:
+		return nil
 	}
 }
 
