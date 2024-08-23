@@ -2,14 +2,176 @@
 # Dwarf Wars Settings #
 #######################
 
-# Log Settings
 ["Log Settings"]
-LogFileName="log.log"
-LogPollRate=60000 # in miliseconds
-LogPath="./logs"
-LogMaxSize = 5 # in megabytes
+"Max Size" = 5 # Megabytes
+"File Name" = "log.log"
+Path = "./"
 
-["Server Settings"]
-Address=""
-Port=3000
-Idle_Timeout=1000 # miliseconds
+["Game Server"]
+Address = ""
+Port = 3_000
+"Idle Timeout" = 300 # Miliseconds
+
+["Database Servers".Auth]
+Address = "127.0.0.1"
+Port = 3_306
+Username = "root"
+Password = "password"
+"Default DB" = "Users"
+Views = { }
+
+[["Database Servers".Auth.Tables.User_Login]]
+Name = "ID"
+Type = "INTEGER"
+"Auto Increment" = true
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Auth.Tables.User_Login]]
+Name = "UID"
+Type = "VARCHAR(100)"
+"Auto Increment" = false
+"Primary Key" = true
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Auth.Tables.User_Login]]
+Name = "Secret"
+Type = "VARCHAR(100)"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Auth.Tables.User_Login]]
+Name = "Last_Seen"
+Type = "datetime"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = true
+
+[["Database Servers".Auth.Tables.User_Login]]
+Name = "Creation_Timestamp"
+Type = "datetime"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+Default = "CURRENT_TIMESTAMP()"
+
+[["Database Servers".Auth.Tables.Access_Logs]]
+Name = "ID"
+Type = "INTEGER"
+"Auto Increment" = true
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Auth.Tables.Access_Logs]]
+Name = "UID"
+Type = "VARCHAR(100)"
+"Auto Increment" = false
+"Primary Key" = true
+"Foriegn Key" = false
+"Null Allowed" = false
+
+["Database Servers".Stats]
+Address = "127.0.0.1"
+Port = 3_307
+Username = "root"
+Password = "password"
+"Default DB" = "GDA"
+Views = { }
+
+[["Database Servers".Stats.Tables.Match_Events]]
+Name = "Match_ID"
+Type = "VARCHAR(255)"
+"Auto Increment" = false
+"Primary Key" = true
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Stats.Tables.Match_Events]]
+Name = "UID"
+Type = "VARCHAR(100)"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = true
+
+[["Database Servers".Stats.Tables.Match_Events]]
+Name = "Event"
+Type = "LONGTEXT"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Stats.Tables.Chat_Logs]]
+Name = "ID"
+Type = "INTEGER"
+"Auto Increment" = true
+"Primary Key" = true
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Stats.Tables.Chat_Logs]]
+Name = "Match_ID"
+Type = "VARCHAR(255)"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Stats.Tables.Chat_Logs]]
+Name = "UID"
+Type = "VARCHAR(100)"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = false
+
+[["Database Servers".Stats.Tables.Chat_Logs]]
+Name = "Message"
+Type = "TEXT"
+"Auto Increment" = false
+"Primary Key" = false
+"Foriegn Key" = false
+"Null Allowed" = true
+
+["Database Servers".Game]
+Address = "127.0.0.1"
+Port = 3_308
+Username = "root"
+Password = "password"
+"Default DB" = "Worlds"
+Views = { }
+
+  ["Database Servers".Game.Tables]
+  Archived_Games = [ ]
+
+    [["Database Servers".Game.Tables.Games]]
+    Name = "ID"
+    Type = "INTEGER"
+    "Auto Increment" = true
+    "Primary Key" = false
+    "Foriegn Key" = false
+    "Null Allowed" = false
+
+    [["Database Servers".Game.Tables.Games]]
+    Name = "Match_ID"
+    Type = "VARCHAR(255)"
+    "Auto Increment" = false
+    "Primary Key" = true
+    "Foriegn Key" = false
+    "Null Allowed" = false
+
+    [["Database Servers".Game.Tables.Games]]
+    Name = "Length"
+    Type = "INTEGER"
+    "Auto Increment" = false
+    "Primary Key" = false
+    "Foriegn Key" = false
+    "Null Allowed" = true
