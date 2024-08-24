@@ -18,10 +18,6 @@ import (
 	"time"
 )
 
-const (
-	PoolPublic = iota
-)
-
 type Server struct {
 	Addr        string         // Address the server will listen on
 	Port        string         // Listening Port
@@ -29,7 +25,6 @@ type Server struct {
 	exit        chan struct{}  // used to close down the server
 	waitGroup   sync.WaitGroup // tracking goruitines for connections so they can shutdown properly
 	idleTimeout time.Duration
-	connPool    map[net.Addr]net.Conn
 	ctx         context.Context
 }
 
@@ -40,7 +35,6 @@ func New(addr, port string, timeout time.Duration) (s *Server, err error) {
 		Quitting:    false,
 		exit:        make(chan struct{}),
 		idleTimeout: timeout,
-		connPool:    make(map[net.Addr]net.Conn),
 	}
 	return
 }
@@ -109,18 +103,12 @@ func (s *Server) listen(ctx context.Context, l net.Listener) (err error) {
 						continue
 					}
 				}
-				if _, ok := s.connPool[conn.RemoteAddr()]; !ok {
-					s.connPool[conn.RemoteAddr()] = conn
-				} else {
-					log.Printf(" Connection for %s already exists", conn.RemoteAddr().String())
-					continue
-				}
-				go s.accept(ctx, s.connPool[conn.RemoteAddr()])
+				go s.tcpHandle(ctx, conn)
 			}
 		}
 
 	} else if l.Addr().Network() == "upd" {
-		//////////////////
+		////////////////// NOTE: Not Implemented
 		// UDP Listener //
 		//////////////////
 		for {
@@ -140,48 +128,56 @@ func (s *Server) listen(ctx context.Context, l net.Listener) (err error) {
 	return
 }
 
-func (s *Server) accept(ctx context.Context, conn net.Conn) (err error) {
+func (s *Server) tcpHandle(ctx context.Context, conn net.Conn) (err error) {
 	s.waitGroup.Add(1)
 	defer s.waitGroup.Done()
-
 	defer conn.Close()
-
 	log.Printf("Server Accepted Connection from %s", conn.RemoteAddr())
 
-	for {
-		select {
+	lastRead := time.Now()
+	lastWrite := time.Now()
 
-		case <-ctx.Done():
-			return ctx.Err()
+	waitG := sync.WaitGroup{}
 
-		default:
-			// Making the server echo for now
-			var cmd tcp.Command
-			var data []byte
-			rn, err := conn.Read(data)
-			if err != nil {
-				log.Printf("Conn (%s) Error: %s", conn.RemoteAddr(), err)
-			}
-			err = cmd.UnmarshalBinary(data)
-			if err != nil {
-				log.Printf("Failed to Unmarshal command from client: %s", err)
-				continue
-			}
+	readCtx, readCancel := context.WithCancel(ctx)
+	writeCtx, writeCancel := context.WithCancel(ctx)
 
-			response, err := cmd.MarshalBinary()
-			if err != nil {
-				log.Printf("Failed to Marshal Binary command for client: %s", err)
-				continue
+	// Reading From Connection
+	go func(c context.Context, cn net.Conn) error {
+		waitG.Add(1)
+		defer waitG.Done()
+		for {
+			select {
+			case <-c.Done():
+				return c.Err()
+			default:
+				// do something
 			}
-
-			wn, err := conn.Write(response)
-			if err != nil {
-				log.Printf("Conn (%s) Error: %s", conn.RemoteAddr(), err)
-			}
-			if wn != rn {
-				log.Printf("Conn (%s) Warning: read and write data lengths do not match R: %d, W: %d", conn.RemoteAddr(), rn, wn)
-			}
-
 		}
+	}(readCtx, conn)
+	// Writing to Connection
+	go func(c context.Context, cn net.Conn) error {
+		waitG.Add(1)
+		defer waitG.Done()
+		for {
+			select {
+			case <-c.Done():
+				return c.Err()
+			default:
+				// do something
+			}
+		}
+	}(writeCtx, conn)
+
+	for {
+		if time.Since(lastRead) >= time.Minute && time.Since(lastWrite) >= time.Minute {
+			readCancel()
+			writeCancel()
+			log.Printf("(Dwarf Wars Server) Closing Connection due to inactivity (%s)", conn.RemoteAddr())
+			conn.Close()
+			waitG.Wait()
+			return
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
