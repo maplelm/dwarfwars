@@ -19,6 +19,8 @@ The server will probably need to be broken up into multiple parts to not have th
    - Looking at stats
    - all none game related client actions
 - Auth Server
+- Broker Server
+- API Gateway
 
 ### Backend
 
