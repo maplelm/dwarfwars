@@ -2,9 +2,23 @@
 
 This will be a Dwarf fortress / Rimworld enspired Multiplayer game. I am hoping to make it have the same sandbox story driven feel as it's inspiration but with friends. or strangers, however you want to play.
 
-## TCP Server
-
 ## Game Scope
+
+I want to have the world depth of Dwarf Fortress with it's 3d words and massive simulation but I want the actual game play and mechanics of how the world interacts with itself to be more simple like in rimworld. I don't really want to spend the next 20 year coding the game up to be on par with the depth of Dwarf Fortress.
+
+There should be two main components to the game.
+
+- Client
+- Server
+
+The server will probably need to be broken up into multiple parts to not have the whole thing be quite so monolithic:
+
+- Game Server
+- Client / Lobby Server
+   - Finding a server
+   - Looking at stats
+   - all none game related client actions
+- Auth Server
 
 ### Backend
 
@@ -12,25 +26,13 @@ The backend is written in go and will relay on sqlite files to store information
 
 Need to figure out how to close a socket connection when the client sends a FIN packet to the server. the problem is looking like some clients will send a RESET connection request if they have data in thier buffer or not.
 
-#### Save Data Options
+#### Encoding & Decoding
 
-- Protocol Buffers (ProtoBuf)
-- FlatBuffers
-- MessagePack
-- Cap'n Proto
-- Avro
-- CBOR
-
-
-### Choice
-
-I Am going to either go with Cap'n Proto, FlatBuffers or XML, I am not sure yet
-
-I could also just use a database but I don't know how well that will scale, I probably don't need it to scale that much anyways as this will not be a very big product. I don't plan on it being anyways, we will get there when we get there if we get there. I am thinking that just using a log binary blob in a nosql database would work the best.
+I Have choicen to go with Golang Gobs for this projects because the server and client are both planned to be in Go, I am not building a game that requires -1 latancy. actually I am thinking of having the tick rate be half a seoncd long so there will be plenty of time for network messages to be encoded and decoded. Gobs should make the process much easier and if they become a choke point in the future then I will just refactor the code as I don't think the network encoding / decoding will be super hard to swap out. all this should be doing anyways is encoding/decoding and the passing the data structure on to the next step.
 
 #### Connections
-
-It looks like Go supports connection pooling. I want to look into that and see how I can implement that as I feel that is what I am trying to role myself anyways.
+Each Client should have 2 connecections to the game server. a TCP connection for managing the meta data and will be more of a management conneciton and a UDP connection that will handle all of the game data. I am still unsure about this as I think that if I just pushed the game data through a TCP connection it would be fine and much easier as I would just have to worry about processing the data not if it gets to me properly or not. that can be handed off to the NIC card and network drivers if we are using TCP.
 
 ### Frontend
 
+The Front end will be written in Go as well as the backend. This is to enable gobs as a serialization method. I was originally thinking that this could be a web based game but not if we are using gobs. I think it would be for the best to use a proper client anyways. Web games are not as popular as they used to be and if I am using go to procuess the front end is shouldn't be all that hard to make the client multiplatform anyways.
