@@ -28,6 +28,11 @@ The backend is written in go and will relay on sqlite files to store information
 
 Need to figure out how to close a socket connection when the client sends a FIN packet to the server. the problem is looking like some clients will send a RESET connection request if they have data in thier buffer or not.
 
+
+#### Secrets Storage
+
+I am currently looking into docker secrets for storing usernames, passwords, tokens. I know that you can use AWS Secrets manager but I don't want to pay for a cloud service when I can host something locally. I have plenty of computing power. there is no reason to buy more from amazon.
+
 #### Encoding & Decoding
 
 I Have choicen to go with Golang Gobs for this projects because the server and client are both planned to be in Go, I am not building a game that requires -1 latancy. actually I am thinking of having the tick rate be half a seoncd long so there will be plenty of time for network messages to be encoded and decoded. Gobs should make the process much easier and if they become a choke point in the future then I will just refactor the code as I don't think the network encoding / decoding will be super hard to swap out. all this should be doing anyways is encoding/decoding and the passing the data structure on to the next step.
