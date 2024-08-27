@@ -1,5 +1,6 @@
 package server
 
+/*
 import (
 	"net"
 	"sync"
@@ -95,3 +96,4 @@ func (c *connection) WriteUDP(cmd Command) (n int, err error) {
 	n, err = c.Udp.Write(bytes)
 	return
 }
+*/
