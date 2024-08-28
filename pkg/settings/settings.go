@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	dataCache map[string]*interface{} = make(map[string]*interface{})
+	dataCache map[string]*interface{} = make(map[string]*interface{}) // Map of all previsou settings
 )
 
 func LoadFromTomlFile(key, path, name string) (settingData *interface{}, err error) {

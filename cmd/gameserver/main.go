@@ -16,35 +16,61 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/tui"
 )
 
-func main() {
+var (
+	mainSettingsPath string
+)
 
+func main() {
 	var (
-		waitgroup sync.WaitGroup
-		serv      *server.Server = nil
+		mainWaitGroup sync.WaitGroup
+		gameServer    *server.Server   = nil
+		opts          *settings.Config = nil
 	)
 
-	/////////////////////////////
-	// Loading System Settings //
-	/////////////////////////////
+	opts, err := LoadSettings("./", "settings.toml")
+	if err != nil {
+		log.Fatalf("Failed to load Main Settings TOML File, %s", err)
+	}
+
+	err = InitLogger(opts)
+	if err != nil {
+		log.Fatalf("Failed to initiate Logger, %s", err)
+	}
+
+	mainCtx, ctxCancel := context.WithCancel(context.Background())
+
+	mainMenu := InitTui(mainCtx, &mainWaitGroup, opts, gameServer)
+
+	//////////////////////////////
+	// Setting Up TUI / Actions //
+	//////////////////////////////
+	op := tea.NewProgram(mainMenu)
+	if _, err := op.Run(); err != nil {
+		log.Fatalf("(Bubbletea) Error, %s", err)
+	}
+	ctxCancel()
+	log.Printf("Losing Game Server, %s", err)
+	mainWaitGroup.Wait()
+}
+
+func LoadSettings(defaultpath, defaultname string) (opts *settings.Config, err error) {
 	settingsPath := os.Getenv("SETTINGS_PATH")
 	if len(settingsPath) == 0 {
-		settingsPath = "./"
+		settingsPath = defaultpath
 	}
 	settingsName := os.Getenv("SETTINGS_NAME")
 	if len(settingsName) == 0 {
-		settingsName = "settings.toml"
+		settingsName = defaultname
 	}
-
-	_, err := settings.LoadFromTomlFile("Main", settingsPath, settingsName)
+	_, err = settings.LoadFromTomlFile("Main", settingsPath, settingsName)
 	if err != nil {
-		log.Fatalf("(Main Thread) Failed to load main TOML settings file, %s", err)
+		return
 	}
+	opts, err = settings.Get[settings.Config]("Main")
+	return
+}
 
-	opts, err := settings.Get[settings.Config]("Main")
-	if err != nil {
-		log.Fatalf("(Main Thread) Failed to get Main settings from memory, %s", err)
-	}
-
+func InitLogger(opts *settings.Config) (err error) {
 	//////////////////////////////
 	// Setting up System Logger //
 	//////////////////////////////
@@ -54,38 +80,23 @@ func main() {
 		opts.Log.FileName,
 		opts.Log.MaxFileSize),
 	)
-	log.SetPrefix("System:")
+	log.SetPrefix("Game Server:")
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	// Validating that log path exists
 	_, err = os.Stat(opts.Log.Path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			err = os.MkdirAll(opts.Log.Path, 0777)
-			if err != nil {
-				fmt.Printf("Failed to setup Logging Path, %s\n", err)
-				os.Exit(1)
-			}
-		} else {
-			fmt.Printf("Failed to validate Log Path, %s\n", err)
-			os.Exit(1)
-		}
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		err = os.MkdirAll(opts.Log.Path, 0777)
 	}
+	return
+}
 
-	////////////////////////////////////////////
-	// Setting up Default Context for program //
-	////////////////////////////////////////////
-	main_ctx, ctx_cancel := context.WithCancel(context.Background())
-
-	//////////////////////////////
-	// Setting Up TUI / Actions //
-	//////////////////////////////
+func InitTui(parentCtx context.Context, wg *sync.WaitGroup, opts *settings.Config, serv *server.Server) (mm *tui.Menu) {
 	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
-	ctxServer, serverCancel := context.WithCancel(main_ctx)
+	ctxServer, serverCancel := context.WithCancel(parentCtx)
 	mainMenu = mainMenu.
 		Add("Start Auth Server", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
 			if !state {
-
 				serv, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port), time.Duration(opts.Server.IdleTimeout)*time.Millisecond)
 				if err != nil {
 					log.Printf("(Dwarf Wars Server) Failed to Create server, %s", err)
@@ -99,8 +110,8 @@ func main() {
 				}
 				log.Printf("(Dwarf Wars Server) Starting Server")
 				go func() {
-					waitgroup.Add(1)
-					defer waitgroup.Done()
+					wg.Add(1)
+					defer wg.Done()
 					serv.StartTCP(ctxServer)
 				}()
 				s = true
@@ -138,11 +149,9 @@ func main() {
 		}).
 		Add("Quit", false, func(state bool) (cmd tea.Cmd, s bool, err error) {
 			log.Printf("(TUI) Quiting Program")
-			ctx_cancel()
+			serverCancel()
 			return tea.Quit, state, nil
 		})
-	op := tea.NewProgram(mainMenu)
-	if _, err := op.Run(); err != nil {
-		log.Fatalf("(Bubbletea) Error, %s", err)
-	}
+	mm = &mainMenu
+	return
 }

@@ -39,6 +39,11 @@ Need to figure out how to close a socket connection when the client sends a FIN
 packet to the server. the problem is looking like some clients will send a
 RESET connection request if they have data in thier buffer or not.
 
+
+#### Secrets Storage
+
+I am currently looking into docker secrets for storing usernames, passwords, tokens. I know that you can use AWS Secrets manager but I don't want to pay for a cloud service when I can host something locally. I have plenty of computing power. there is no reason to buy more from amazon.
+
 #### Encoding & Decoding
 
 I Have choicen to go with Golang Gobs for this projects because the server and
