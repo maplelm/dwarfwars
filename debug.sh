@@ -1,11 +1,34 @@
 #!/bin/bash
 
-commands=( "less ./cmd/gameserver/bin/logs/log.log"
-	"cd ./cmd/gameserver/bin/ && ( SETTINGSPATH='./' go run ../ || echo 'Failed' ) && cd ../../.."
+commands=( 
+	"Read Game Server Current Logs"
+	"Run Game Server"
 )
 
-selection=$( printf "%s\n" "${commands[@]}" | fzf --prompt="Select a command > " --height=100% --layout=reverse --border=double --exit-0 )
+Run() {
+local selection=$( printf "%s\n" "${commands[@]}" | fzf --prompt="Select a command > " --height=100% --layout=reverse --border=double --exit-0 )
 
-echo "Running: $selection"
-$selection
+if [[ $selection = "Read Game Server Current Logs" ]]; then
+	ReadCurrentLogFile gameserver
+elif [[ $selection = "Run Game Server" ]]; then
+	Runcmd gameserver
+elif [[ -z $selection ]]; then
+	echo "Debug Cancled"
+fi
+}
 
+ReadCurrentLogFile()
+{
+	echo "Reading: $PWD/cmd/$1/bin/logs/log.log"
+	less "$PWD/cmd/$1/bin/logs/log.log"
+}
+
+Runcmd() 
+{
+	cd "$PWD/cmd/$1/bin" || exit 1
+	SETTINGSPATH='./' go run ../
+	cd "../../.."
+}
+
+
+Run

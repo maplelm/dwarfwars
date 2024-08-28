@@ -4,40 +4,53 @@ This will be a Dwarf fortress / Rimworld enspired Multiplayer game. I am hoping 
 
 ## Game Scope
 
-I want to have the world depth of Dwarf Fortress with it's 3d words and massive simulation but I want the actual game play and mechanics of how the world interacts with itself to be more simple like in rimworld. I don't really want to spend the next 20 year coding the game up to be on par with the depth of Dwarf Fortress.
+I want to have the world depth of Dwarf Fortress with it's 3D words and massive simulation but I want the actual game play and mechanics of how the world interacts with itself to be more simple like in Rimworld. I don't really want to spend the next 20 year coding the game up to be on par with the depth of Dwarf Fortress.
 
 There should be two main components to the game.
 
 - Client
 - Server
 
-The server will probably need to be broken up into multiple parts to not have the whole thing be quite so monolithic:
-
-- Game Server
-- Client / Lobby Server
-   - Finding a server
-   - Looking at stats
-   - all none game related client actions
-- Auth Server
-- Broker Server
-- API Gateway
-- Connection Proxy / Server
-
-What is the difference between the game server and the world server?
-
-From what I can find the difference is that the game server will handle the
-individual games while a world server will manage a custer of game servers.
-
 ### Backend
 
-The backend is written in go and will relay on sqlite files to store
-information. I want this project to be easy to spin up on anyones system. This
+![Backend View](./Assets/Backend_Overview.png)
+
+The backend is written in go and will relay on Sqlite3 files to store
+information. I want this project to be easy to spin up on anyone's system. This
 is supposed to be a self host game. I am not sure if there are any better
-technologies out there that would allow for better saving of data then sqlite.
+technologies out there that would allow for better saving of data then Sqlite3.
 
 Need to figure out how to close a socket connection when the client sends a FIN
 packet to the server. the problem is looking like some clients will send a
-RESET connection request if they have data in thier buffer or not.
+RESET connection request if they have data in their buffer or not.
+
+The server will probably need to be broken up into multiple parts to not have the whole thing be quite so monolithic:
+
++ __Current__
+  + Connection / Auth Server
+  + World Server
+  + Game Server
+  + Databases
+    + SQL Server
+    + Redis Server
++ __Potential In Future__
+   + Client / Lobby Server
+      + Finding a server
+      + Looking at stats
+      + all none game related client actions
+   + Broker Server
+   + API Gateway
+   + Connection Proxy / Server
+
+
+From what I can find the difference is that the game server will handle the
+individual games while a world server will manage a cluster of game servers.
+
+Going to have a connection server that will the the sole connection point and authentication point for users. the server will pool user traffic and batch it to the appropriate game server /world server
+
+#### World Server vs Game Server
+
+The world server is the manager of each match that is happening across any children game servers that it has while the game server purely calculates and manages the games that it is assigned. that is the best explanation I have for now.
 
 
 #### Secrets Storage
@@ -46,9 +59,9 @@ I am currently looking into docker secrets for storing usernames, passwords, tok
 
 #### Encoding & Decoding
 
-I Have choicen to go with Golang Gobs for this projects because the server and
+I Have chosen to go with Golang Gobs for this projects because the server and
 client are both planned to be in Go, I am not building a game that requires -1
-latancy. actually I am thinking of having the tick rate be half a seoncd long
+latency. actually I am thinking of having the tick rate be half a second long
 so there will be plenty of time for network messages to be encoded and decoded.
 Gobs should make the process much easier and if they become a choke point in
 the future then I will just refactor the code as I don't think the network
