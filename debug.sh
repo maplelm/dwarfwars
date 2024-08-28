@@ -3,6 +3,7 @@
 commands=( 
 	"Read Game Server Current Logs"
 	"Run Game Server"
+	"Run Game Server With Tui"
 )
 
 Run() {
@@ -12,6 +13,8 @@ if [[ $selection = "Read Game Server Current Logs" ]]; then
 	ReadCurrentLogFile gameserver
 elif [[ $selection = "Run Game Server" ]]; then
 	Runcmd gameserver
+elif [[ $selection = "Run Game Server With Tui" ]]; then
+	Runcmd gameserver -tui
 elif [[ -z $selection ]]; then
 	echo "Debug Cancled"
 fi
@@ -26,7 +29,7 @@ ReadCurrentLogFile()
 Runcmd() 
 {
 	cd "$PWD/cmd/$1/bin" || exit 1
-	SETTINGSPATH='./' go run ../
+	SETTINGSPATH='./' go run ../ $2
 	cd "../../.."
 }
 

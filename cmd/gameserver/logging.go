@@ -5,7 +5,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
+)
+
+var (
+	LogEntryTitle string = "System"
+	rwMut         sync.RWMutex
 )
 
 type RotationWriter struct {
@@ -63,14 +69,44 @@ func (rw *RotationWriter) Rotate() (err error) {
 	return
 }
 
-func LogError(err error) {
-	log.Printf("Error: %s", err)
+func LogError(err error, msg string) {
+	rwMut.RLock()
+	defer rwMut.RUnlock()
+	log.Printf(`{"Type": "Error", "Source": "%s", "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, msg, err)
+}
+
+func LogErrorf(err error, format string, args ...any) {
+	rwMut.RLock()
+	defer rwMut.RUnlock()
+	log.Printf(`{"Type": "Error", "Source": "%s", , "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...), err)
 }
 
 func LogWarning(msg string) {
-	log.Printf("Warning: %s", msg)
+	rwMut.RLock()
+	defer rwMut.RUnlock()
+	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, msg)
+}
+
+func LogWarningf(err error, format string, args ...any) {
+	rwMut.RLock()
+	defer rwMut.RUnlock()
+	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...))
 }
 
 func LogInfo(msg string) {
-	log.Printf("Info: %s", msg)
+	rwMut.RLock()
+	defer rwMut.RUnlock()
+	log.Printf(`{"Type": "Info", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, msg)
+}
+
+func LogInfof(format string, args ...any) {
+	rwMut.RLock()
+	defer rwMut.RUnlock()
+	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...))
+}
+
+func SetLogEntryTitle(t string) {
+	rwMut.Lock()
+	defer rwMut.Unlock()
+	LogEntryTitle = t
 }
