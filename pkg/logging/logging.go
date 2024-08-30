@@ -1,4 +1,4 @@
-package main
+package logging
 
 import (
 	"fmt"
@@ -69,43 +69,43 @@ func (rw *RotationWriter) Rotate() (err error) {
 	return
 }
 
-func LogError(err error, msg string) {
+func Error(err error, msg string) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Error", "Source": "%s", "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, msg, err)
 }
 
-func LogErrorf(err error, format string, args ...any) {
+func Errorf(err error, format string, args ...any) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Error", "Source": "%s", , "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...), err)
 }
 
-func LogWarning(msg string) {
+func Warning(msg string) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, msg)
 }
 
-func LogWarningf(err error, format string, args ...any) {
+func Warningf(err error, format string, args ...any) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...))
 }
 
-func LogInfo(msg string) {
+func Info(msg string) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Info", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, msg)
 }
 
-func LogInfof(format string, args ...any) {
+func Infof(format string, args ...any) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...))
 }
 
-func SetLogEntryTitle(t string) {
+func SetTitle(t string) {
 	rwMut.Lock()
 	defer rwMut.Unlock()
 	LogEntryTitle = t

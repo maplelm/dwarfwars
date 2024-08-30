@@ -7,9 +7,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
+
+	"github.com/maplelm/dwarfwars/pkg/logging"
 )
 
-type CommandExecuter interface {
+type CommandHandler interface {
 	Command(Menu, int) (tea.Cmd, Menu, error)
 	Enabled(Menu, int) bool
 }
@@ -17,7 +19,7 @@ type Menu struct {
 	cursor  int
 	labels  []string
 	enabled map[int]bool
-	cmds    map[int]CommandExecuter
+	cmds    map[int]CommandHandler
 
 	Ctxcancel     func()
 	CursorIcon    rune
@@ -28,19 +30,21 @@ type Menu struct {
 	ItemStyle     lg.Style
 }
 
-func NewMenu(icon rune, title string, ms, ss, is lg.Style, ctx context.Context) Menu {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return Menu{
+func NewMenu(icon rune, title string, ms, ss, is lg.Style, ctx context.Context) *Menu {
+	return &Menu{
 		CursorIcon:    icon,
 		Title:         title,
 		MainStyle:     ms,
 		SelectedStyle: ss,
 		ItemStyle:     is,
-		Ctx:           ctx,
-		enabled:       make(map[int]bool),
-		cmds:          make(map[int]CommandExecuter),
+		Ctx: func(c context.Context) context.Context {
+			if c == nil {
+				return context.Background()
+			}
+			return ctx
+		}(ctx),
+		enabled: make(map[int]bool),
+		cmds:    make(map[int]CommandHandler),
 	}
 }
 
@@ -53,6 +57,22 @@ func (m *Menu) SetEnabled(s bool, i int) Menu {
 	return *m
 }
 
+func (m *Menu) Increase(i int) {
+	if m.cursor+i < len(m.cmds) {
+		m.cursor += i
+	}
+}
+
+func (m *Menu) Decrease(i int) {
+	if m.cursor-i >= 0 {
+		m.cursor -= i
+	}
+}
+
+func (m *Menu) RunCommand() (tea.Cmd, Menu, error) {
+	return m.cmds[m.cursor].Command(*m, m.cursor)
+}
+
 func (m Menu) Init() tea.Cmd {
 	return nil
 }
@@ -62,20 +82,19 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch ms.String() {
 		case "j", "down":
-			if m.cursor < len(m.cmds) {
-				m.cursor++
-			}
+			m.Increase(1)
 		case "k", "up":
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.Decrease(1)
 		case "l", "right", "enter", " ":
-			log.Printf(`{"Type": "Info", "Source": "TUI", "Msg": "Running Command (%d) %s)"}`, m.cursor, m.labels[m.cursor])
-			log.Printf(`{"Type": "Info", "Source": "TUI", "Msg": "%s"}`, fmt.Sprintf("lenth of cmds: %d", len(m.cmds)))
-			log.Printf(`{"Type": "Info", "Source": "TUI", "Msg": "%s"}`, fmt.Sprintf("Command Value: %p", m.cmds[m.cursor].Command))
-			c, m, e := m.cmds[m.cursor].Command(m, m.cursor)
-			if e != nil {
-				log.Printf("Failed Action for %s: %s", m.labels[m.cursor], e)
+			logging.Infof("Running Command (%d): %s", m.cursor, m.labels[m.cursor])
+			logging.Infof("length of cmds: %d", len(m.cmds))
+			logging.Infof("Command Value: %p", m.cmds[m.cursor].Command)
+			var (
+				c   tea.Cmd
+				err error
+			)
+			if c, m, err = m.RunCommand(); err != nil {
+				logging.Errorf(err, "Failed Action: %s", m.labels[m.cursor])
 			}
 			return m, c
 		case "q", "ctrl+q":
