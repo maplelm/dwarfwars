@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	Verbose bool = true
+
 	LogEntryTitle string = "System"
 	rwMut         sync.RWMutex
 )
@@ -70,39 +72,44 @@ func (rw *RotationWriter) Rotate() (err error) {
 }
 
 func Error(err error, msg string) {
-	rwMut.RLock()
-	defer rwMut.RUnlock()
-	log.Printf(`{"Type": "Error", "Source": "%s", "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, msg, err)
+	Errorf(err, "%s", msg)
 }
 
 func Errorf(err error, format string, args ...any) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
-	log.Printf(`{"Type": "Error", "Source": "%s", , "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...), err)
+	log.Printf(`{"Type": "Error", "Source": "%s", "Msg": "%s", "Error Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...), err)
+	if Verbose {
+		fmt.Printf("{\"Type\": \"Error\", \"Source\": \"%s\", \"Msg\": \"%s\", \"Error Msg\": \"%s\"}", LogEntryTitle, fmt.Sprintf(format, args...), err)
+	}
 }
 
 func Warning(msg string) {
-	rwMut.RLock()
-	defer rwMut.RUnlock()
-	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, msg)
+	Warningf("%s", msg)
 }
 
-func Warningf(err error, format string, args ...any) {
+func Warningf(format string, args ...any) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
 	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...))
+	if Verbose {
+		fmt.Printf("{\"Type\": \"Warning\", \"Source\": \"%s\", \"Msg\": \"%s\"}", LogEntryTitle, fmt.Sprintf(format, args...))
+	}
+
 }
 
 func Info(msg string) {
-	rwMut.RLock()
-	defer rwMut.RUnlock()
-	log.Printf(`{"Type": "Info", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, msg)
+	Infof("%s", msg)
 }
 
 func Infof(format string, args ...any) {
 	rwMut.RLock()
 	defer rwMut.RUnlock()
+
 	log.Printf(`{"Type": "Warning", "Source": "%s", "Msg": "%s"}`, LogEntryTitle, fmt.Sprintf(format, args...))
+	if Verbose {
+		fmt.Printf("{\"Type\": \"Warning\", \"Source\": \"%s\", \"Msg\": \"%s\"}\n", LogEntryTitle, fmt.Sprintf(format, args...))
+	}
 }
 
 func SetTitle(t string) {

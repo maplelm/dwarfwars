@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
 
+	"github.com/maplelm/dwarfwars/pkg/logging"
 	"github.com/maplelm/dwarfwars/pkg/settings"
 	"github.com/maplelm/dwarfwars/pkg/tui"
 )
@@ -32,13 +33,13 @@ func main() {
 	flag.Parse()
 
 	if opts, err = LoadSettings(*optsPath, *optsName); err != nil {
-		LogError(err, "Game Server Main Thread Loading Settings")
+		logging.Error(err, "Game Server Main Thread Loading Settings")
 		os.Exit(1)
 	}
 
 	err = InitLogger(opts)
 	if err != nil {
-		LogError(err, "Game Server Main Thread Initializing Logger")
+		logging.Error(err, "Game Server Main Thread Initializing Logger")
 		os.Exit(1)
 	}
 
@@ -60,7 +61,7 @@ func tuiMode(mainCtx context.Context, mainWaitGroup *sync.WaitGroup) {
 		AddFunc("Settings", false, EditSettings).
 		AddFunc("Quit", false, Quit)
 	if _, err := tea.NewProgram(mainMenu).Run(); err != nil {
-		LogError(err, "Game Server, Main Thread, TUI Mode, Bubbletea Crashed")
+		logging.Error(err, "Game Server, Main Thread, TUI Mode, Bubbletea Crashed")
 		os.Exit(1)
 	}
 }
@@ -93,7 +94,7 @@ func LoadSettings(path, name string) (opts *settings.Config, err error) {
 
 func InitLogger(opts *settings.Config) (err error) {
 	fmt.Printf("Creating logger with path: %s and file name: %s\n", opts.Log.Path, opts.Log.FileName)
-	log.SetOutput(NewRotationWriter(opts.Log.Path, opts.Log.FileName, opts.Log.MaxFileSize))
+	log.SetOutput(logging.NewRotationWriter(opts.Log.Path, opts.Log.FileName, opts.Log.MaxFileSize))
 	log.SetPrefix("Game Server:")
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	// Validating that log path exists

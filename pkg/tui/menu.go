@@ -11,15 +11,20 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/logging"
 )
 
-type CommandHandler interface {
-	Command(Menu, int) (tea.Cmd, Menu, error)
-	Enabled(Menu, int) bool
+type Selecter interface {
+	Select(Menu, int) (tea.Cmd, Menu, error)
+	IsSelect(Menu, int) bool
 }
+
+type menuOption struct {
+	Label    string
+	enabled  bool
+	selecter Selecter
+}
+
 type Menu struct {
 	cursor  int
-	labels  []string
-	enabled map[int]bool
-	cmds    map[int]CommandHandler
+	options []menuOption
 
 	Ctxcancel     func()
 	CursorIcon    rune
@@ -43,22 +48,20 @@ func NewMenu(icon rune, title string, ms, ss, is lg.Style, ctx context.Context) 
 			}
 			return ctx
 		}(ctx),
-		enabled: make(map[int]bool),
-		cmds:    make(map[int]CommandHandler),
 	}
 }
 
 func (m Menu) IsEnabled(i int) bool {
-	return m.enabled[i]
+	return m.options[i].enabled
 }
 
 func (m *Menu) SetEnabled(s bool, i int) Menu {
-	m.enabled[i] = s
+	m.options[i].enabled = s
 	return *m
 }
 
 func (m *Menu) Increase(i int) {
-	if m.cursor+i < len(m.cmds) {
+	if m.cursor+i < len(m.options) {
 		m.cursor += i
 	}
 }
@@ -70,7 +73,7 @@ func (m *Menu) Decrease(i int) {
 }
 
 func (m *Menu) RunCommand() (tea.Cmd, Menu, error) {
-	return m.cmds[m.cursor].Command(*m, m.cursor)
+	return m.options[m.cursor].selecter.Select(*m, m.cursor)
 }
 
 func (m Menu) Init() tea.Cmd {
@@ -86,15 +89,15 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "k", "up":
 			m.Decrease(1)
 		case "l", "right", "enter", " ":
-			logging.Infof("Running Command (%d): %s", m.cursor, m.labels[m.cursor])
-			logging.Infof("length of cmds: %d", len(m.cmds))
-			logging.Infof("Command Value: %p", m.cmds[m.cursor].Command)
+			logging.Infof("Running Command (%d): %s", m.cursor, m.options[m.cursor].Label)
+			logging.Infof("length of cmds: %d", len(m.options))
+			logging.Infof("Command Value: %p", m.options[m.cursor].selecter.Select)
 			var (
 				c   tea.Cmd
 				err error
 			)
 			if c, m, err = m.RunCommand(); err != nil {
-				logging.Errorf(err, "Failed Action: %s", m.labels[m.cursor])
+				logging.Errorf(err, "Failed Action: %s", m.options[m.cursor].Label)
 			}
 			return m, c
 		case "q", "ctrl+q":
@@ -107,13 +110,13 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Menu) View() string {
 	var line string
 	output := fmt.Sprintf(" %s \n", m.Title)
-	for i, l := range m.labels {
+	for i, opt := range m.options {
 		if m.cursor == i {
-			line = fmt.Sprintf(" %c %s\n", m.CursorIcon, m.SelectedStyle.Render(l))
+			line = fmt.Sprintf(" %c %s\n", m.CursorIcon, m.SelectedStyle.Render(opt.Label))
 		} else {
-			line = fmt.Sprintf("   %s\n", m.ItemStyle.Render(l))
+			line = fmt.Sprintf("   %s\n", m.ItemStyle.Render(opt.Label))
 		}
-		if m.enabled[i] {
+		if m.options[i].enabled {
 			output += fmt.Sprintf("%s\n", lg.NewStyle().Foreground(lg.Color("#00FF00")).Render(line))
 		} else {
 			output += line
@@ -122,29 +125,29 @@ func (m Menu) View() string {
 	return m.MainStyle.Render(output)
 }
 
-func (m Menu) Add(label string, initState bool, cmd CommandExecuter) Menu {
-	for _, v := range m.labels {
-		if v == label {
+func (m Menu) Add(label string, initState bool, cmd Selecter) Menu {
+	for _, v := range m.options {
+		if v.Label == label {
 			log.Printf("%s already exists in menu", label)
 			return m
 		}
 	}
-	m.labels = append(m.labels, label)
-	m.enabled[len(m.labels)-1] = initState
-	m.cmds[len(m.labels)-1] = cmd
+	m.options = append(m.options, menuOption{
+		Label:    label,
+		enabled:  initState,
+		selecter: cmd,
+	})
 	return m
 }
 
 func (m Menu) AddFunc(l string, state bool, a func(Menu, int) (tea.Cmd, Menu, error)) Menu {
-	return m.Add(l, state, BasicMenuCommand(a))
+	return m.Add(l, state, BasicMenuSelecter(a))
 }
 
 func (m Menu) Remove(l string) Menu {
-	for i, v := range m.labels {
-		if v == l {
-			m.labels = append(m.labels[:i], m.labels[i:]...)
-			delete(m.enabled, i)
-			delete(m.cmds, i)
+	for i, v := range m.options {
+		if v.Label == l {
+			m.options = append(m.options[:i], m.options[:i]...)
 			return m
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/maplelm/dwarfwars/pkg/logging"
 )
 
 func main() {
@@ -14,33 +16,33 @@ func main() {
 		port int    = 3000
 	)
 
-	fmt.Println("Connecting to Server...")
+	logging.Info("Connecting to Server")
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
-		fmt.Printf("Failed to connect to the server, %s\n", err)
+		logging.Error(err, "Failed to connect to server")
 		os.Exit(1)
 	}
 	defer conn.Close()
 
-	fmt.Println("Sending data...")
+	logging.Info("Sending data")
 
 	wn, err := conn.Write([]byte("ping"))
 	if err != nil {
-		fmt.Printf("Failed to Write data to socket, %s\n", err)
+		logging.Error(err, "Failed to Write data to socket")
 		os.Exit(1)
 	}
 
-	fmt.Println("Reading Reply...")
+	logging.Info("Reading Reply")
 	var data []byte = []byte{}
 	rn, err := conn.Read(data)
 	if err != nil {
-		fmt.Printf("Failed to read response from server, %s\n", err)
+		logging.Error(err, "Failed to read response from server")
 		os.Exit(1)
 	}
 
 	if wn != rn {
-		fmt.Printf("Warning: writen data does not match read data: W: %d, R: %d\n", wn, rn)
+		logging.Warningf("written data does not match read data, W: %d, R: %d", wn, rn)
 	}
 
-	fmt.Printf("Server: %s\n", string(data))
+	logging.Infof("Server: %s", string(data))
 }
