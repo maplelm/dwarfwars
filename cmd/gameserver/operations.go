@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maplelm/dwarfwars/pkg/logging"
 	"github.com/maplelm/dwarfwars/pkg/server"
 	"github.com/maplelm/dwarfwars/pkg/settings"
 	"github.com/maplelm/dwarfwars/pkg/tui"
@@ -21,34 +22,34 @@ type ServerCommand struct {
 	waitgroup *sync.WaitGroup
 }
 
-func (sc *ServerCommand) Enabled(m tui.Menu, i int) bool {
+func (sc *ServerCommand) IsSelect(m tui.Menu, i int) bool {
 	return m.IsEnabled(i)
 }
 
-func (sc *ServerCommand) Command(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
-	SetLogEntryTitle("Dwarf Wars Game Server")
-	defer SetLogEntryTitle("System")
+func (sc *ServerCommand) Select(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
+	logging.SetTitle("Dwarf Wars Game Server")
+	defer logging.SetTitle("System")
 
 	opts, err := settings.Get[settings.Config]("Main")
 	if err != nil {
 		return nil, m, err
 	}
 
-	LogInfo("Running the ServerCommand.Command")
-	LogInfof(" IsEnabled: %t", m.IsEnabled(i))
+	logging.Info("Running the ServerCommand.Command")
+	logging.Infof(" IsEnabled: %t", m.IsEnabled(i))
 	if !m.IsEnabled(i) {
 		sc.Server, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port), time.Duration(opts.Server.IdleTimeout)*time.Millisecond)
 		if err != nil {
-			LogError(err, "Failed to create server")
+			logging.Error(err, "Failed to create server")
 			return tea.Quit, m, fmt.Errorf("Main Menu Start Server: %s", err)
 		}
-		LogInfo("Validating SQL Servers & Databases")
+		logging.Info("Validating SQL Servers & Databases")
 		err = ValidateSQLServers(opts.SQLServers.ToList())
 		if err != nil {
-			LogError(err, "Failed to Validate SQL Server & Databases")
+			logging.Error(err, "Failed to Validate SQL Server & Databases")
 			return nil, m, err
 		}
-		LogInfo("Validating SQL Servers & Databases Successfull")
+		logging.Info("Validating SQL Servers & Databases Successfull")
 
 		if sc.CtxCancel == nil {
 			if sc.Ctx == nil {
@@ -57,8 +58,8 @@ func (sc *ServerCommand) Command(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 			sc.Ctx, sc.CtxCancel = context.WithCancel(sc.Ctx)
 		}
 
-		LogInfof("waiting group status: %v", sc.waitgroup)
-		LogInfo("Starting Server")
+		logging.Infof("waiting group status: %v", sc.waitgroup)
+		logging.Info("Starting Server")
 		go func(wg *sync.WaitGroup) {
 			wg.Add(1)
 			defer wg.Done()
@@ -68,7 +69,7 @@ func (sc *ServerCommand) Command(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 	} else {
 		sc.CtxCancel()
 		sc.Server.Wait()
-		LogInfo("Server stopped")
+		logging.Info("Server stopped")
 		m.SetEnabled(false, i)
 	}
 
@@ -76,8 +77,8 @@ func (sc *ServerCommand) Command(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 }
 
 func EditSettings(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
-	SetLogEntryTitle("TUI")
-	defer SetLogEntryTitle("System")
+	logging.SetTitle("TUI")
+	defer logging.SetTitle("System")
 	opts, err := settings.Get[settings.Config]("Main")
 	if err != nil {
 		return nil, m, err
@@ -85,18 +86,18 @@ func EditSettings(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 	var inter interface{} = *opts
 	settingsMenu := tui.NewSettingsMenu(&inter, '>', lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
 	p := tea.NewProgram(settingsMenu)
-	LogInfo("Opening Settings Window")
+	logging.Info("Opening Settings Window")
 	if _, err = p.Run(); err != nil {
-		LogError(err, "Failed to open settings window")
+		logging.Error(err, "Failed to open settings window")
 		return nil, m, fmt.Errorf("Settings Menu: %s", err)
 	}
 	return nil, m, nil
 }
 
 func Quit(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
-	SetLogEntryTitle("TUI")
-	defer SetLogEntryTitle("System")
-	LogInfo("Quit Command Selected, Manual Shutdown Started")
+	logging.SetTitle("TUI")
+	defer logging.SetTitle("System")
+	logging.Info("Quit Command Selected, Manual Shutdown Started")
 	if m.Ctxcancel != nil {
 		m.Ctxcancel()
 	}
