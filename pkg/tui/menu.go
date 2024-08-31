@@ -1,47 +1,76 @@
 package tui
 
 import (
+	"context"
 	"fmt"
+	"log"
+
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
-	"log"
+
+	"github.com/maplelm/dwarfwars/pkg/logging"
 )
 
-// Takes in state and returns state and bubble team command (can fail)
-type Action func(bool) (cmd tea.Cmd, state bool, err error)
-
-func (f Action) action(b bool) (cmd tea.Cmd, state bool, err error) {
-	return f(b)
+type CommandHandler interface {
+	Command(Menu, int) (tea.Cmd, Menu, error)
+	Enabled(Menu, int) bool
 }
-
-type ActionHandler interface {
-	action(bool) (cmd tea.Cmd, state bool, err error)
-}
-
-func CreateAction(f func(bool) (cmd tea.Cmd, state bool, err error)) ActionHandler {
-	return Action(f)
-}
-
 type Menu struct {
-	cursor        int
+	cursor  int
+	labels  []string
+	enabled map[int]bool
+	cmds    map[int]CommandHandler
+
+	Ctxcancel     func()
 	CursorIcon    rune
-	labels        []string
-	enabled       []bool
-	actions       []ActionHandler
+	Ctx           context.Context
 	Title         string
 	MainStyle     lg.Style
 	SelectedStyle lg.Style
 	ItemStyle     lg.Style
 }
 
-func NewMenu(icon rune, title string, ms, ss, is lg.Style) Menu {
-	return Menu{
+func NewMenu(icon rune, title string, ms, ss, is lg.Style, ctx context.Context) *Menu {
+	return &Menu{
 		CursorIcon:    icon,
 		Title:         title,
 		MainStyle:     ms,
 		SelectedStyle: ss,
 		ItemStyle:     is,
+		Ctx: func(c context.Context) context.Context {
+			if c == nil {
+				return context.Background()
+			}
+			return ctx
+		}(ctx),
+		enabled: make(map[int]bool),
+		cmds:    make(map[int]CommandHandler),
 	}
+}
+
+func (m Menu) IsEnabled(i int) bool {
+	return m.enabled[i]
+}
+
+func (m *Menu) SetEnabled(s bool, i int) Menu {
+	m.enabled[i] = s
+	return *m
+}
+
+func (m *Menu) Increase(i int) {
+	if m.cursor+i < len(m.cmds) {
+		m.cursor += i
+	}
+}
+
+func (m *Menu) Decrease(i int) {
+	if m.cursor-i >= 0 {
+		m.cursor -= i
+	}
+}
+
+func (m *Menu) RunCommand() (tea.Cmd, Menu, error) {
+	return m.cmds[m.cursor].Command(*m, m.cursor)
 }
 
 func (m Menu) Init() tea.Cmd {
@@ -53,20 +82,20 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch ms.String() {
 		case "j", "down":
-			if m.cursor < len(m.actions) {
-				m.cursor++
-			}
+			m.Increase(1)
 		case "k", "up":
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.Decrease(1)
 		case "l", "right", "enter", " ":
-			c, s, e := m.actions[m.cursor].action(m.enabled[m.cursor])
-			if e != nil {
-				log.Printf("Failed Action for %s: %s", m.labels[m.cursor], e)
-				return m, nil
+			logging.Infof("Running Command (%d): %s", m.cursor, m.labels[m.cursor])
+			logging.Infof("length of cmds: %d", len(m.cmds))
+			logging.Infof("Command Value: %p", m.cmds[m.cursor].Command)
+			var (
+				c   tea.Cmd
+				err error
+			)
+			if c, m, err = m.RunCommand(); err != nil {
+				logging.Errorf(err, "Failed Action: %s", m.labels[m.cursor])
 			}
-			m.enabled[m.cursor] = s // update state
 			return m, c
 		case "q", "ctrl+q":
 			return m, tea.Quit
@@ -74,6 +103,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
+
 func (m Menu) View() string {
 	var line string
 	output := fmt.Sprintf(" %s \n", m.Title)
@@ -92,25 +122,29 @@ func (m Menu) View() string {
 	return m.MainStyle.Render(output)
 }
 
-func (m Menu) Add(l string, state bool, a func(bool) (tea.Cmd, bool, error)) Menu {
+func (m Menu) Add(label string, initState bool, cmd CommandExecuter) Menu {
 	for _, v := range m.labels {
-		if v == l {
-			fmt.Printf("%s already exists in menu\n", l)
+		if v == label {
+			log.Printf("%s already exists in menu", label)
 			return m
 		}
 	}
-	m.labels = append(m.labels, l)
-	m.enabled = append(m.enabled, state)
-	m.actions = append(m.actions, Action(a))
+	m.labels = append(m.labels, label)
+	m.enabled[len(m.labels)-1] = initState
+	m.cmds[len(m.labels)-1] = cmd
 	return m
+}
+
+func (m Menu) AddFunc(l string, state bool, a func(Menu, int) (tea.Cmd, Menu, error)) Menu {
+	return m.Add(l, state, BasicMenuCommand(a))
 }
 
 func (m Menu) Remove(l string) Menu {
 	for i, v := range m.labels {
 		if v == l {
 			m.labels = append(m.labels[:i], m.labels[i:]...)
-			m.enabled = append(m.enabled[:i], m.enabled[i:]...)
-			m.actions = append(m.actions[:i], m.actions[i:]...)
+			delete(m.enabled, i)
+			delete(m.cmds, i)
 			return m
 		}
 	}
