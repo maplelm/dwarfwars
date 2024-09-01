@@ -15,18 +15,18 @@ import (
 	lg "github.com/charmbracelet/lipgloss"
 )
 
-type ServerCommand struct {
+type Server struct {
 	Server    *server.Server
 	Ctx       context.Context
 	CtxCancel func()
 	waitgroup *sync.WaitGroup
 }
 
-func (sc *ServerCommand) IsSelect(m tui.Menu, i int) bool {
+func (sc *ServerSelecter) IsSelect(m tui.Menu, i int) bool {
 	return m.IsEnabled(i)
 }
 
-func (sc *ServerCommand) Select(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
+func (sc *ServerSelecter) Toggle(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 	logging.SetTitle("Dwarf Wars Game Server")
 	defer logging.SetTitle("System")
 
@@ -35,7 +35,7 @@ func (sc *ServerCommand) Select(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 		return nil, m, err
 	}
 
-	logging.Info("Running the ServerCommand.Command")
+	logging.Info("Running the ServerSelecter.Command")
 	logging.Infof(" IsEnabled: %t", m.IsEnabled(i))
 	if !m.IsEnabled(i) {
 		sc.Server, err = server.New(opts.Server.Addr, fmt.Sprintf("%d", opts.Server.Port), time.Duration(opts.Server.IdleTimeout)*time.Millisecond)
@@ -63,7 +63,7 @@ func (sc *ServerCommand) Select(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 		go func(wg *sync.WaitGroup) {
 			wg.Add(1)
 			defer wg.Done()
-			sc.Server.StartTCP(sc.Ctx)
+			sc.Server.StartTCP(sc.Ctx, make(chan struct{})) // Passing channel this way because I am using the fucntion syncronously in this instance
 		}(sc.waitgroup)
 		m.SetEnabled(true, i)
 	} else {

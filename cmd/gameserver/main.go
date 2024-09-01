@@ -19,8 +19,8 @@ import (
 
 func main() {
 	var (
-		opts         *settings.Config = nil
-		err          error            = nil
+		err          error = nil
+		opts         settings.Config
 		appWaitGroup sync.WaitGroup
 	)
 
@@ -57,7 +57,7 @@ func main() {
 
 func tuiMode(mainCtx context.Context, mainWaitGroup *sync.WaitGroup) {
 	mainMenu := tui.NewMenu('>', "Dwarf Wars Server", lg.NewStyle(), lg.NewStyle(), lg.NewStyle(), mainCtx).
-		Add("Start Server", false, &ServerCommand{Server: nil, waitgroup: mainWaitGroup}).
+		Add("Start Server", false, &ServerSelecter{Server: nil, waitgroup: mainWaitGroup}).
 		AddFunc("Settings", false, EditSettings).
 		AddFunc("Quit", false, Quit)
 	if _, err := tea.NewProgram(mainMenu).Run(); err != nil {
@@ -67,7 +67,7 @@ func tuiMode(mainCtx context.Context, mainWaitGroup *sync.WaitGroup) {
 }
 func cliMode() {}
 
-func LoadSettings(path, name string) (opts *settings.Config, err error) {
+func LoadSettings(path, name string) (opts settings.Config, err error) {
 	/*
 		Priority:
 			+ Commandline Arg
@@ -86,13 +86,13 @@ func LoadSettings(path, name string) (opts *settings.Config, err error) {
 			name = "settings.toml"
 		}
 	}
-	if _, err := settings.LoadFromTomlFile("Main", path, name); err != nil {
-		return nil, err
+	if _, err := settings.LoadFromFile[settings.Config]("Main", path, name); err != nil {
+		return settings.Config{}, err
 	}
 	return settings.Get[settings.Config]("Main")
 }
 
-func InitLogger(opts *settings.Config) (err error) {
+func InitLogger(opts settings.Config) (err error) {
 	fmt.Printf("Creating logger with path: %s and file name: %s\n", opts.Log.Path, opts.Log.FileName)
 	log.SetOutput(logging.NewRotationWriter(opts.Log.Path, opts.Log.FileName, opts.Log.MaxFileSize))
 	log.SetPrefix("Game Server:")

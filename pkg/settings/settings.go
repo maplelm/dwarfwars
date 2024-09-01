@@ -6,90 +6,95 @@ import (
 	"github.com/BurntSushi/toml"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+type Format byte
+
+const (
+	FormatToml Format = iota
+	FormatJson
+	FormatUnknown
+)
+
+type Data struct {
+	data   []byte
+	format Format
+}
 
 var (
-	dataCache map[string]*interface{} = make(map[string]*interface{}) // Map of all previsou settings
+	data map[string]Data = make(map[string]Data) // Map of all previsou settings
 )
 
-func LoadFromTomlFile(key, path, name string) (settingData *interface{}, err error) {
-	if d, ok := dataCache[key]; ok {
-		return d, fmt.Errorf("LoadFromTomlFile: Key %s is in use", key)
+func LoadFromFile[T any](k, p, n string) (T, error) {
+	var (
+		sd  T
+		err error
+		fd  []byte
+		f   Format
+	)
+	if fd, err = os.ReadFile(filepath.Join(p, n)); err != nil {
+		return sd, err
 	}
-	fileData, err := os.ReadFile(filepath.Join(path, name))
-	if err != nil {
-		return nil, fmt.Errorf("LoadFromToml: %s", err)
+	t := strings.Split(n, ".")[len(strings.Split(n, "."))-1]
+	switch t {
+	case "toml":
+		f = FormatToml
+	case "json":
+		f = FormatJson
+	default:
+		f = FormatUnknown
 	}
-	settingData = new(interface{})
-	err = toml.Unmarshal(fileData, settingData)
-	if err != nil {
-		return nil, fmt.Errorf("LoadFromToml: %s", err)
-	}
-	dataCache[key] = settingData
-	return
+	return Load[T](k, Data{
+		data:   fd,
+		format: f,
+	})
 }
 
-func LoadFromToml(key string, data []byte) (settingsData *interface{}, err error) {
-	if d, ok := dataCache[key]; ok {
-		return d, fmt.Errorf("LoadFromToml: Key %s in use", key)
+func Load[T any](key string, sd Data) (T, error) {
+	var (
+		rd  T
+		err error
+	)
+	if _, ok := data[key]; ok {
+		return rd, fmt.Errorf("Key %s exists", key)
 	}
-	settingsData = new(interface{})
-	err = toml.Unmarshal(data, settingsData)
-	if err != nil {
-		return nil, err
+	switch sd.format {
+	case FormatToml:
+		if err = toml.Unmarshal(sd.data, &rd); err != nil {
+			return rd, err
+		}
+	case FormatJson:
+		if err = json.Unmarshal(sd.data, &rd); err != nil {
+			return rd, err
+		}
+	default:
+		return rd, fmt.Errorf("Settings.Load: Unsupported format, %d", sd.format)
 	}
-	dataCache[key] = settingsData
-	return
+	data[key] = sd
+	return rd, nil
 }
 
-func LoadFromJsonFile(key, path, name string) (settingsData *interface{}, err error) {
-	if d, ok := dataCache[key]; ok {
-		return d, fmt.Errorf("LoadFromJsonFile: key %s already exists", key)
-	}
-	bytes, err := os.ReadFile(filepath.Join(path, name))
-	if err != nil {
-		return nil, fmt.Errorf("LoadFromJsonFile: %s", err)
-	}
-	settingsData = new(interface{})
-	err = json.Unmarshal(bytes, settingsData)
-	if err != nil {
-		return nil, fmt.Errorf("LoadFromJsonFile: %s", err)
-	}
-	dataCache[key] = settingsData
-	return
-}
-
-func LoadFromJson(key string, data []byte) (settingsData *interface{}, err error) {
-	if d, ok := dataCache[key]; ok {
-		return d, fmt.Errorf("LoadFromJson: %s", err)
-	}
-	settingsData = new(interface{})
-	err = json.Unmarshal(data, settingsData)
-	if err != nil {
-		return nil, fmt.Errorf("LoadFromJson: %s", err)
-	}
-	return
-}
-
-func Get[T any](key string) (dat *T, err error) {
-	if d, ok := dataCache[key]; !ok {
-		return nil, fmt.Errorf("settings.Get: settings with key %s does not exist", key)
-	} else {
-		switch val := (*d).(type) {
-		case T:
-			return &val, nil
+func Get[T any](k string) (T, error) {
+	var (
+		d   Data
+		rd  T
+		err error
+		ok  bool
+	)
+	if d, ok = data[k]; ok {
+		switch d.format {
+		case FormatToml:
+			if err = toml.Unmarshal(d.data, &rd); err != nil {
+				return rd, err
+			}
+		case FormatJson:
+			if err = json.Unmarshal(d.data, &rd); err != nil {
+				return rd, err
+			}
 		default:
-
-			bytes, err := toml.Marshal(*d)
-			if err != nil {
-				return nil, err
-			}
-			dat = new(T)
-			err = toml.Unmarshal(bytes, dat)
-			if err != nil {
-				return nil, err
-			}
-			return dat, err
+			return rd, fmt.Errorf("Unsupported Format: %d", d.format)
 		}
 	}
+	return rd, fmt.Errorf("Key %s does not exist", k)
 }

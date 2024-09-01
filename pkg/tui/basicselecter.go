@@ -6,7 +6,7 @@ import (
 
 type BasicMenuSelecter func(Menu, int) (tea.Cmd, Menu, error)
 
-func (f BasicMenuSelecter) Select(m Menu, i int) (tea.Cmd, Menu, error) {
+func (f BasicMenuSelecter) Toggle(m Menu, i int) (tea.Cmd, Menu, error) {
 	return f(m, i)
 }
 

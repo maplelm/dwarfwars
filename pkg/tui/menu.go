@@ -12,7 +12,7 @@ import (
 )
 
 type Selecter interface {
-	Select(Menu, int) (tea.Cmd, Menu, error)
+	Toggle(Menu, int) (tea.Cmd, Menu, error)
 	IsSelect(Menu, int) bool
 }
 
@@ -73,7 +73,7 @@ func (m *Menu) Decrease(i int) {
 }
 
 func (m *Menu) RunCommand() (tea.Cmd, Menu, error) {
-	return m.options[m.cursor].selecter.Select(*m, m.cursor)
+	return m.options[m.cursor].selecter.Toggle(*m, m.cursor)
 }
 
 func (m Menu) Init() tea.Cmd {
@@ -91,7 +91,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "l", "right", "enter", " ":
 			logging.Infof("Running Command (%d): %s", m.cursor, m.options[m.cursor].Label)
 			logging.Infof("length of cmds: %d", len(m.options))
-			logging.Infof("Command Value: %p", m.options[m.cursor].selecter.Select)
+			logging.Infof("Command Value: %p", m.options[m.cursor].selecter.Toggle)
 			var (
 				c   tea.Cmd
 				err error
