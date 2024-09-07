@@ -53,16 +53,16 @@ func (s *Server) IsSelect(m tui.Menu, i int) bool {
 func (s *Server) Toggle(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 	logging.SetTitle("Game Server")
 	defer logging.SetTitle("System")
-	opts, err := settings.Get[settings.Config]("Main")
-	if err != nil {
-		return nil, m, err
-	}
+	// opts, err := settings.Get[settings.Config]("Main")
+	// if err != nil {
+	// 	return nil, m, err
+	// }
 	logging.Infof(" Dwarf Wars Server State: %t", !m.IsEnabled(i))
 
 	switch m.IsEnabled(i) {
 	case true:
 		// Validating SQL Servers & Databases
-		err = ValidateSQLServers
+		err := ValidateSQLServers()
 	case false:
 	}
 	// Start if not enabled

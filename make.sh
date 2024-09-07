@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 
 # NOTE: Need to make script work regardless of cwd.
@@ -18,7 +18,7 @@ build() {
 
 run() {
 	local neededdir="./bin/$2"
-	if [[ ! -d "$neededdir" ]];then
+	if [[ ! -d "$neededdir" ]]; then
 		mkdir -p "$neededdir"
 	fi
 	if [[ ! -f "$neededdir/$1" ]]; then

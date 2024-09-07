@@ -1,0 +1,9 @@
+[Logging]
+Size = 5 #MB
+Name = "log.log" # Name of file to push logs to
+Path = "./logs/" # Path for the above file is located
+
+["Game Server"]
+Address = ""
+Port = 3_000
+"Idle Timeout" = 300 # Miliseconds
