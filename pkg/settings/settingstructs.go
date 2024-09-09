@@ -1,12 +1,36 @@
 package settings
 
+import (
+// "fmt"
+)
+
+type MainDB struct{}
+
+const (
+	DbNameMain = iota
+)
+
+type General struct {
+	Logging   Logs `toml:"Log Settings"`
+	Databases []Database
+}
+
+type Settings struct {
+	Log        Logs           `toml:"Log Settings"`
+	Server     ServerSettings `toml:"Game Server"`
+	SQLServers SQLServers     `toml:"Database Servers"`
+}
+
 type Config struct {
-	Log       LogSettings         `toml:"Log Settings"`
+	Log       Logs                `toml:"Log Settings"`
 	Server    ServerSettings      `toml:"Game Server"`
 	Databases map[string]Database `toml:"Database Servers"`
 }
 
-type LogSettings struct {
+type SQLServers struct {
+}
+
+type Logs struct {
 	MaxFileSize int64  `toml:"Max Size"` // in megabytes
 	FileName    string `toml:"File Name"`
 	Path        string `toml:"Path"`

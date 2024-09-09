@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
@@ -17,18 +18,37 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/tui"
 )
 
+// Flags
+var (
+	mainSettingsPath *string
+	mainSettingsName *string
+)
+
 func main() {
 	var (
+		opts *settings.CachedValue[settings.Settings] = settings.NewCachedValue(time.Duration(5)*time.Minute, func(c *settings.CachedValue[settings.Settings]) error {
+			if mainSettingsPath == nil P{
+				return fmt.Errorf("mainSettingsPath must be initialized before cached value can dereference it")
+			}
+			if mainSettingsName == nil {
+				return fmt.Errorf("mainSettingsName must be initialized before cached value can be dereferenced")
+			}
+		value, err := settings.LoadFromFile[settings.Settings](*mainSettingsPath, *mainSettingsName)
+			if err != nil {
+				return err
+			}
+			c.Set(value)
+			return nil
+		})
 		err          error = nil
-		opts         settings.Config
 		appWaitGroup sync.WaitGroup
 	)
 
 	// CLI Flags
 	var (
-		tuimode  *bool   = flag.Bool("tui", false, "If true the server will allow the user to interact with features through a TUI interface")
-		optsPath *string = flag.String("path", "", "path to to the main settings TOML file")
-		optsName *string = flag.String("name", "", "name of main settings TOML file")
+		tuimode          *bool = flag.Bool("tui", false, "If true the server will allow the user to interact with features through a TUI interface")
+		mainSettingsPath       = flag.String("path", "./config/", "path to to the main settings TOML file")
+		mainSettingsName       = flag.String("name", "mainSettings.toml", "name of main settings TOML file")
 	)
 	flag.Parse()
 
@@ -67,37 +87,10 @@ func tuiMode(mainCtx context.Context, mainWaitGroup *sync.WaitGroup) {
 }
 func cliMode() {}
 
-func LoadSettings(path, name string) (opts settings.Config, err error) {
-	/*
-		Priority:
-			+ Commandline Arg
-			+ Environment Variable
-			+ Default Value
-	*/
-	if len(path) == 0 {
-		path = os.Getenv("SETTINGS_PATH")
-		if len(path) == 0 {
-			path = "./"
-		}
-	}
-	if len(name) == 0 {
-		name = os.Getenv("SETTINGS_NAME")
-		if len(name) == 0 {
-			name = "settings.toml"
-		}
-	}
-	if _, err := settings.LoadFromFile[settings.Config]("Main", path, name); err != nil {
-		return settings.Config{}, err
-	}
-	return settings.Get[settings.Config]("Main")
-}
-
 func InitLogger(opts settings.Config) (err error) {
 	fmt.Printf("Creating logger with path: %s and file name: %s\n", opts.Log.Path, opts.Log.FileName)
 	log.SetOutput(logging.NewRotationWriter(opts.Log.Path, opts.Log.FileName, opts.Log.MaxFileSize))
-	log.SetPrefix("Game Server:")
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-	// Validating that log path exists
+	log.SetFlags(log.LUTC)
 	if _, err = os.Stat(opts.Log.Path); err != nil && errors.Is(err, os.ErrNotExist) {
 		return os.MkdirAll(opts.Log.Path, 0777)
 	}

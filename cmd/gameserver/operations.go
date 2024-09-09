@@ -22,11 +22,11 @@ type Server struct {
 	waitgroup *sync.WaitGroup
 }
 
-func (sc *ServerSelecter) IsSelect(m tui.Menu, i int) bool {
+func (sc *Server) IsSelect(m tui.Menu, i int) bool {
 	return m.IsEnabled(i)
 }
 
-func (sc *ServerSelecter) Toggle(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
+func (sc *Server) Toggle(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 	logging.SetTitle("Dwarf Wars Game Server")
 	defer logging.SetTitle("System")
 
@@ -44,7 +44,7 @@ func (sc *ServerSelecter) Toggle(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 			return tea.Quit, m, fmt.Errorf("Main Menu Start Server: %s", err)
 		}
 		logging.Info("Validating SQL Servers & Databases")
-		err = ValidateSQLServers(opts.SQLServers.ToList())
+		err = ValidateSQLServers(opts.Databases)
 		if err != nil {
 			logging.Error(err, "Failed to Validate SQL Server & Databases")
 			return nil, m, err
@@ -83,7 +83,7 @@ func EditSettings(m tui.Menu, i int) (tea.Cmd, tui.Menu, error) {
 	if err != nil {
 		return nil, m, err
 	}
-	var inter interface{} = *opts
+	var inter interface{} = opts
 	settingsMenu := tui.NewSettingsMenu(&inter, '>', lg.NewStyle(), lg.NewStyle(), lg.NewStyle())
 	p := tea.NewProgram(settingsMenu)
 	logging.Info("Opening Settings Window")
