@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maplelm/dwarfwars/cmd/gameserver/pkg/tui"
+
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
 
@@ -24,16 +26,26 @@ var (
 	mainSettingsName *string
 )
 
+func new_main() {
+	p := tea.NewProgram(tui.InitMenu('>', []tui.Option{}, "Game Server"))
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Error Running Program: %s\n", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
+	new_main()
+	return
 	var (
 		opts *settings.CachedValue[settings.Settings] = settings.NewCachedValue(time.Duration(5)*time.Minute, func(c *settings.CachedValue[settings.Settings]) error {
-			if mainSettingsPath == nil P{
+			if mainSettingsPath == nil {
 				return fmt.Errorf("mainSettingsPath must be initialized before cached value can dereference it")
 			}
 			if mainSettingsName == nil {
 				return fmt.Errorf("mainSettingsName must be initialized before cached value can be dereferenced")
 			}
-		value, err := settings.LoadFromFile[settings.Settings](*mainSettingsPath, *mainSettingsName)
+			value, err := settings.LoadFromFile[settings.Settings](*mainSettingsPath, *mainSettingsName)
 			if err != nil {
 				return err
 			}

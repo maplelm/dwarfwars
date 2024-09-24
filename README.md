@@ -13,7 +13,7 @@ There should be two main components to the game.
 
 ### Backend
 
-![Backend View](./Assets/Backend_Overview.png)
+![Backend View](./assets/Backend_Overview.png)
 
 The backend is written in go and will relay on Sqlite3 files to store
 information. I want this project to be easy to spin up on anyone's system. This
