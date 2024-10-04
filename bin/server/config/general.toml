@@ -1,9 +1,33 @@
 [Logging]
-Size = 5 #MB
-Name = "log.log" # Name of file to push logs to
-Path = "./logs/" # Path for the above file is located
+Size                = 5         #MB
+Name                = "log.log" # Name of file to push logs to
+Path                = "./logs/" # Path for the above file is located
+Prefix              = "Server"
+
+[Logging.Flags]
+UTC          = false
+Date         = false
+Time         = false
+Longfile     = false
+Msgprefix    = false
+Shortfile    = false
+Microseconds = false
 
 ["Game Server"]
 Address = ""
 Port = 3_000
-"Idle Timeout" = 300 # Miliseconds
+
+["Game Server".Timeouts]
+Idle  = 300 # Miliseconds
+Read  = 300 # Miliseconds
+Write = 300 # Miliseconds
+
+
+[DB]
+"Server Address" = "127.0.0.1"
+"Server Port" = 3_306
+# going to put this in a more secure location later on
+"Server Username" = "root"
+"Server Password" = "password"
+####
+"Validation Direcroty" = "./sql/validation/"

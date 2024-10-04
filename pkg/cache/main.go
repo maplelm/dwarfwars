@@ -15,8 +15,8 @@ type Cache[T any] struct {
 	refresh func(*T) error
 }
 
-func New[T any](pr time.Duration, f func(*T) error) Cache[T] {
-	return Cache[T]{
+func New[T any](pr time.Duration, f func(*T) error) *Cache[T] {
+	return &Cache[T]{
 		PollRate: pr,
 		refresh:  f,
 	}
