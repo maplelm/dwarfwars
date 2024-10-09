@@ -35,6 +35,19 @@ func (c *Cache[T]) Get() (*T, error) {
 	return &c.data, nil
 }
 
+func (c *Cache[T]) MustGet() *T {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if time.Since(c.lastPolled) >= c.PollRate {
+		err := c.refresh(&c.data)
+		if err != nil {
+			panic(err)
+		}
+		c.lastPolled = time.Now()
+	}
+	return &c.data
+}
+
 func (c *Cache[T]) Set(v T) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()

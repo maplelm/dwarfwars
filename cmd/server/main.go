@@ -55,46 +55,50 @@ var (
 		}
 		return nil
 	})
+	connectionsMutex sync.Mutex
+	connections      map[net.Addr]*net.Conn
 )
 
 func main() {
 	var (
-		o         *Options
 		err       error
 		waitgroup *sync.WaitGroup = new(sync.WaitGroup)
 	)
 	// Getting command line arguments
 	flag.Parse()
 
+	defer func() {
+		if recover() != nil {
+			fmt.Printf("Panicing: %s\n", recover())
+			os.Exit(1)
+		}
+	}()
+
 	logflags := 0
-	if o, err = opts.Get(); err != nil {
-		panic(err)
-	} else {
-		if o.Logging.Flags.UTC {
-			logflags = logflags | log.LUTC
-		}
-		if o.Logging.Flags.Date {
-			logflags = logflags | log.Ldate
-		}
-		if o.Logging.Flags.Time {
-			logflags = logflags | log.Ltime
-		}
-		if o.Logging.Flags.Longfile {
-			logflags = logflags | log.Llongfile
-		}
-		if o.Logging.Flags.Msgprefix {
-			logflags = logflags | log.Lmsgprefix
-		}
-		if o.Logging.Flags.Shortfile {
-			logflags = logflags | log.Lshortfile
-		}
-		if o.Logging.Flags.Microseconds {
-			logflags = logflags | log.Lmicroseconds
-		}
+	if opts.MustGet().Logging.Flags.UTC {
+		logflags = logflags | log.LUTC
+	}
+	if opts.MustGet().Logging.Flags.Date {
+		logflags = logflags | log.Ldate
+	}
+	if opts.MustGet().Logging.Flags.Time {
+		logflags = logflags | log.Ltime
+	}
+	if opts.MustGet().Logging.Flags.Longfile {
+		logflags = logflags | log.Llongfile
+	}
+	if opts.MustGet().Logging.Flags.Msgprefix {
+		logflags = logflags | log.Lmsgprefix
+	}
+	if opts.MustGet().Logging.Flags.Shortfile {
+		logflags = logflags | log.Lshortfile
+	}
+	if opts.MustGet().Logging.Flags.Microseconds {
+		logflags = logflags | log.Lmicroseconds
 	}
 
 	// Setting up logging
-	MainLogger := log.New(os.Stdout, o.Logging.Prefix, logflags)
+	MainLogger := log.New(os.Stdout, opts.MustGet().Logging.Prefix, logflags)
 
 	// validate the sql server here
 	MainLogger.Println("Validating Database Before Server Bootup")
@@ -102,22 +106,12 @@ func main() {
 sqlvalidation:
 	for sqlvalidationattempts < 3 {
 		var (
-			creds *struct {
-				user     string
-				password string
-			}
-			o    *Options
 			err  error
 			conn *sql.DB
 		)
-		if creds, err = sqlcreds.Get(); err != nil {
-			panic(err)
-		}
-		if o, err = opts.Get(); err != nil {
-			panic(err)
-		}
+		creds := sqlcreds.MustGet()
 
-		if conn, err = sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:%d)/%s", creds.user, creds.password, o.Db.Addr, o.Db.Port, "")); err != nil {
+		if conn, err = sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:%d)/%s", creds.user, creds.password, opts.MustGet().Db.Addr, opts.MustGet().Db.Port, "")); err != nil {
 			sqlvalidationattempts++
 			MainLogger.Printf("Failed to connect to sql server, waiting %d seconds and trying again\n\t%s", sqlvalidationattempts*3, err)
 			time.Sleep(time.Duration(sqlvalidationattempts*3) * time.Second)
@@ -125,8 +119,8 @@ sqlvalidation:
 		}
 		defer conn.Close()
 
-		MainLogger.Printf("Walking %s to get sql validation scripts", o.Db.ValidationDir)
-		if err = filepath.Walk(o.Db.ValidationDir, func(path string, info os.FileInfo, err error) error {
+		MainLogger.Printf("Walking %s to get sql validation scripts", opts.MustGet().Db.ValidationDir)
+		if err = filepath.Walk(opts.MustGet().Db.ValidationDir, func(path string, info os.FileInfo, err error) error {
 			var b []byte
 
 			if err != nil {
@@ -193,31 +187,46 @@ func TuiMode(logger *log.Logger) error {
 
 func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup) error {
 	var (
-		o        *Options
 		err      error
 		addr     *net.TCPAddr
 		listener *net.TCPListener
 		connChan chan net.Conn = make(chan net.Conn, 10)
 	)
 
+	/*
+	*	Initiating Connections Map
+	 */
+	connections = make(map[net.Addr]*net.Conn)
+
+	/*
+		Adding CliMode to the sync group.
+
+		This should allow for proper shutdowns.
+	*/
 	wgrp.Add(1)
 	defer wgrp.Done()
 
-	if o, err = opts.Get(); err != nil {
-		logger.Printf("Failed to get options: %s", err)
-		return err
-	}
-
-	if addr, err = net.ResolveTCPAddr("tcp", o.Game.Addr); err != nil {
+	/*
+	*	Resolving TCP Address for the Server to use.
+	*	Required, will shut the server down if failed.
+	 */
+	if addr, err = net.ResolveTCPAddr("tcp", opts.MustGet().Game.Addr); err != nil {
 		logger.Printf("Failed to Resolve TCP Address for server: %s", err)
 		return err
 	}
 
+	/*
+	*	Creating a Listner Objevt to create new TCP connections.
+	*	Required, will shut the server down if failed.
+	 */
 	if listener, err = net.ListenTCP("tcp", addr); err != nil {
 		logger.Printf("Failed to creat TCP Listner: %s", err)
 		return err
 	}
 
+	/*
+	*	Listening and creating new Connections
+	 */
 	go func(cc chan net.Conn) {
 		wgrp.Add(1)
 		defer wgrp.Done()
@@ -235,23 +244,34 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup) erro
 					logger.Printf("Listener Failed to Accept Incoming Connection: %s", err)
 				}
 			} else {
-				conn.SetReadDeadline(time.Now().Add(time.Duration(o.Game.Timeouts.Read) * time.Millisecond))
-				conn.SetWriteDeadline(time.Now().Add(time.Duration(o.Game.Timeouts.Write) * time.Millisecond))
+				conn.SetReadDeadline(time.Now().Add(time.Duration(opts.MustGet().Game.Timeouts.Read) * time.Millisecond))
+				conn.SetWriteDeadline(time.Now().Add(time.Duration(opts.MustGet().Game.Timeouts.Write) * time.Millisecond))
 				cc <- conn
 			}
 		}
 	}(connChan)
 
+	/*
+	*	Starts up new connection threads as they come in to the server
+	 */
 	for {
 		select {
 		case <-ctx.Done():
 			return listener.Close()
 		case conn := <-connChan:
+			connectionsMutex.Lock()
+			connections[conn.RemoteAddr()] = &conn
+			connectionsMutex.Unlock()
 			// handle each connection has they come in from the listner
-			go func(c net.Conn) error {
+			go func(c *net.Conn) error {
 				wgrp.Add(1)
 				defer wgrp.Done()
-				defer c.Close()
+				defer func() {
+					connectionsMutex.Lock()
+					delete(connections, (*c).RemoteAddr())
+					connectionsMutex.Unlock()
+				}()
+				defer (*c).Close()
 
 				var (
 					data []byte
@@ -259,20 +279,20 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup) erro
 					err  error
 				)
 
-				if n, err = c.Read(data); n > 0 && err == nil {
+				if n, err = (*c).Read(data); n > 0 && err == nil {
 					logger.Printf("Message from connection (%s): %s", conn.RemoteAddr(), string(data))
 				} else if err != nil {
 					logger.Printf("Failed to read data from client: %s", err)
 					data = []byte(err.Error())
 				}
 
-				if n, err = c.Write(data); n > 0 && err == nil {
+				if n, err = (*c).Write(data); n > 0 && err == nil {
 					logger.Printf("Message Sent to Connection (%s): %s", conn.RemoteAddr(), string(data))
 				} else if err != nil {
 					logger.Printf("Failed to Write data to Client: %s", err)
 				}
 				return nil
-			}(conn)
+			}(&conn)
 		}
 	}
 }
