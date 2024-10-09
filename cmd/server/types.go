@@ -1,6 +1,6 @@
 package main
 
-type Creds struct {
+type Credentials struct {
 	Username string
 	Password string
 }
