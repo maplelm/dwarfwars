@@ -31,7 +31,7 @@ func (c *Cache[T]) Get() (*T, error) {
 		if err != nil {
 			return nil, err
 		}
-		c.lastPolled = time.Now()
+		//c.lastPolled = time.Now()
 	}
 	return &c.data, nil
 }

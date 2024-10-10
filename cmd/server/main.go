@@ -50,8 +50,11 @@ func main() {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("General Settings Data: %s\n", string(b))
-			return toml.Unmarshal(b, o)
+			//fmt.Printf("General Settings Data from file: %s\n", string(b))
+			err = toml.Unmarshal(b, o)
+			//b, err = toml.Marshal(o)
+			//fmt.Printf("General Setting Data Marshalled: %s\n", string(b))
+			return err
 		})
 	)
 
@@ -161,12 +164,15 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 	*	Resolving TCP Address for the Server to use.
 	*	Required, will shut the server down if failed.
 	 */
-	if addr, err = net.ResolveTCPAddr("tcp", opts.MustGet().Game.Addr); err != nil {
+	logger.Printf("Resolving TCP Address: %s:%d", opts.MustGet().Game.Addr, opts.MustGet().Game.Port)
+	if addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", opts.MustGet().Game.Addr, opts.MustGet().Game.Port)); err != nil {
 		logger.Printf("Failed to Resolve TCP Address for server: %s", err)
 		return err
+	} else {
+		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	server, err := NewServer(addr, 10)
+	server, err := NewServer(addr, 10, ConnectionHandlerFunc(EchoConnection))
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		return err

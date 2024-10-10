@@ -11,17 +11,37 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/cache"
 )
 
+type ConnectionHandler interface {
+	Serve(*log.Logger, context.Context, *net.Conn)
+}
+
+type ConnectionHandle struct {
+	f func(*log.Logger, context.Context, *net.Conn)
+}
+
+func (ch *ConnectionHandle) Serve(l *log.Logger, ctx context.Context, conn *net.Conn) {
+	ch.f(l, ctx, conn)
+}
+
+func ConnectionHandlerFunc(f func(*log.Logger, context.Context, *net.Conn)) ConnectionHandler {
+	obj := ConnectionHandle{
+		f: f,
+	}
+	return &obj
+}
+
 type Server struct {
 	Addr     *net.TCPAddr
 	Listener *net.TCPListener
 	CC       chan net.Conn
+	Handle   ConnectionHandler
 
 	connMutex   sync.Mutex
 	Connections map[net.Addr]*net.Conn
 	conns       sync.WaitGroup
 }
 
-func NewServer(addr *net.TCPAddr, chanSize int) (*Server, error) {
+func NewServer(addr *net.TCPAddr, chanSize int, handle ConnectionHandler) (*Server, error) {
 	l, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -30,6 +50,7 @@ func NewServer(addr *net.TCPAddr, chanSize int) (*Server, error) {
 		Connections: make(map[net.Addr]*net.Conn),
 		Addr:        addr,
 		Listener:    l,
+		Handle:      handle,
 		CC:          make(chan net.Conn, chanSize),
 	}, nil
 }
@@ -60,7 +81,6 @@ func (s *Server) Start(opts *cache.Cache[Options], logger *log.Logger, wgrp *syn
 				}
 				var netErr *net.OpError
 				if errors.As(err, &netErr) && netErr.Timeout() {
-					logger.Printf("Listener timed out before accepting a connection: %s", err)
 				} else {
 					logger.Printf("Listner Failed to Accept Incoming Connection: %s", err)
 				}
@@ -89,25 +109,31 @@ func (s *Server) connectionManager(logger *log.Logger, ctx context.Context) erro
 			s.connMutex.Lock()
 			s.Connections[conn.RemoteAddr()] = &conn
 			s.connMutex.Unlock()
-			go s.HandleConnection(logger, ctx, &conn)
+			go func() {
+				s.connMutex.Lock()
+				s.Connections[conn.RemoteAddr()] = &conn
+				s.connMutex.Unlock()
+
+				s.Handle.Serve(logger, ctx, &conn)
+
+				s.connMutex.Lock()
+				delete(s.Connections, conn.RemoteAddr())
+				s.connMutex.Unlock()
+			}()
 		}
 	}
 }
 
-func (s *Server) HandleConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) error {
-	defer func() {
-		s.connMutex.Lock()
-		delete(s.Connections, (*conn).RemoteAddr())
-		s.connMutex.Unlock()
-	}()
+func EchoConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) {
 	defer (*conn).Close()
 
 	var (
-		data []byte
+		data []byte = make([]byte, 2000)
 		n    int
 		err  error
 	)
 
+	// Reading to Connection
 	if n, err = (*conn).Read(data); n > 0 && err == nil {
 		logger.Printf("Message from connection (%s): %s", (*conn).RemoteAddr(), string(data))
 	} else if err != nil {
@@ -117,13 +143,12 @@ func (s *Server) HandleConnection(logger *log.Logger, ctx context.Context, conn 
 		logger.Printf("No data to read (%s)", (*conn).RemoteAddr())
 	}
 
-	if n, err = (*conn).Write(data); n > 0 && err == nil {
+	// Writing to Connection
+	if n, err = (*conn).Write(data[:n]); n > 0 && err == nil {
 		logger.Printf("Message Sent to Conneciton (%s): %s", (*conn).RemoteAddr(), string(data))
 	} else if err != nil {
 		logger.Printf("Failed to Write data to Client: %s", err)
 	} else {
 		logger.Printf("No data Writen (%s)", (*conn).RemoteAddr())
 	}
-
-	return nil
 }

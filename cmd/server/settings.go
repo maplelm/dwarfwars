@@ -21,7 +21,7 @@ type Options struct {
 		Addr     string `toml:"Address"`
 		Port     int    `toml:"Port"`
 		Timeouts struct {
-			Idle  int `toml: "Idle"`
+			Idle  int `toml:"Idle"`
 			Read  int `toml:"Read"`
 			Write int `toml:"Write"`
 		} `toml:"Timeouts"`

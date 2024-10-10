@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-
-	"github.com/maplelm/dwarfwars/pkg/logging"
+	//"github.com/maplelm/dwarfwars/pkg/logging"
 )
 
 func main() {
@@ -16,33 +15,34 @@ func main() {
 		port int    = 3000
 	)
 
-	logging.Info("Connecting to Server")
+	fmt.Println("Connecting to Server")
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
-		logging.Error(err, "Failed to connect to server")
+		fmt.Printf("Failed to connect to server: %s\n", err)
 		os.Exit(1)
 	}
 	defer conn.Close()
 
-	logging.Info("Sending data")
+	fmt.Println("Sending data: 'ping'")
 
 	wn, err := conn.Write([]byte("ping"))
 	if err != nil {
-		logging.Error(err, "Failed to Write data to socket")
+		fmt.Printf("Failed to Write data to socket: %s\n", err)
 		os.Exit(1)
 	}
 
-	logging.Info("Reading Reply")
-	var data []byte = []byte{}
+	fmt.Println("Reading Reply")
+	var data []byte = make([]byte, 2000)
 	rn, err := conn.Read(data)
 	if err != nil {
-		logging.Error(err, "Failed to read response from server")
+		fmt.Printf("Failed to read response from server: %s\n", err)
 		os.Exit(1)
 	}
+	fmt.Printf("Response: %s\n", string(data))
 
 	if wn != rn {
-		logging.Warningf("written data does not match read data, W: %d, R: %d", wn, rn)
+		fmt.Printf("written data does not match read data, W: %d, R: %d\n", wn, rn)
 	}
 
-	logging.Infof("Server: %s", string(data))
+	fmt.Printf("Server: %s\n", string(data))
 }
