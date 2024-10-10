@@ -1,5 +1,8 @@
 package command
 
+/*
+	I need to get this encoded in BigEndian and make it just make more sense but it works pretty well right now.
+*/
 import (
 	"fmt"
 )
