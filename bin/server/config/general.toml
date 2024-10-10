@@ -25,7 +25,7 @@ Write = 300 # Miliseconds
 
 [DB]
 "Server Address" = "127.0.0.1"
-"Server Port" = 3_306
+"Server Port" = 3306
 # going to put this in a more secure location later on
 "Server Username" = "root"
 "Server Password" = "password"

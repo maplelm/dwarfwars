@@ -32,6 +32,6 @@ type Options struct {
 		Port          int    `toml:"Server Port"`
 		Username      string `toml:"Server Username"`
 		Password      string `toml:"Server Password"`
-		ValidationDir string `toml:"Validation Directory"`
+		ValidationDir string `toml:"Validation Direcroty"`
 	} `toml:"DB"`
 }

@@ -17,8 +17,9 @@ type Cache[T any] struct {
 
 func New[T any](pr time.Duration, f func(*T) error) *Cache[T] {
 	return &Cache[T]{
-		PollRate: pr,
-		refresh:  f,
+		PollRate:   pr,
+		refresh:    f,
+		lastPolled: time.Unix(0, 0),
 	}
 }
 
@@ -36,16 +37,11 @@ func (c *Cache[T]) Get() (*T, error) {
 }
 
 func (c *Cache[T]) MustGet() *T {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	if time.Since(c.lastPolled) >= c.PollRate {
-		err := c.refresh(&c.data)
-		if err != nil {
-			panic(err)
-		}
-		c.lastPolled = time.Now()
+	v, err := c.Get()
+	if err != nil {
+		panic(err)
 	}
-	return &c.data
+	return v
 }
 
 func (c *Cache[T]) Set(v T) {

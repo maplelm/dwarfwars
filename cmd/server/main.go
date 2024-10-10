@@ -3,7 +3,6 @@ package main
 import (
 	// STD Packages
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -21,22 +20,20 @@ import (
 )
 
 /*
- * Global variables
+ * Flags
  */
-var ()
+var (
+	configPath *string = flag.String("c", "./config/", "location of settings files")
+	//savepath   *string = flag.String("w", "./saves/World/", "location of world/game data")
+	headless *bool = flag.Bool("h", false, "server will not use a tui and can be automated with scripts")
+)
 
 /*
  * Program Entry Point
  */
 func main() {
-	/*
-	 * Flags
-	 */
-	var (
-		configPath *string = flag.String("config", "./config/", "location of settings files")
-		savepath   *string = flag.String("world", "./saves/World/", "location of world/game data")
-		headless   *bool   = flag.Bool("headless", false, "server will not use a tui and can be automated with scripts")
-	)
+	// Getting command line arguments
+	flag.Parse()
 
 	/*
 	 * Variables
@@ -53,6 +50,7 @@ func main() {
 			if err != nil {
 				return err
 			}
+			fmt.Printf("General Settings Data: %s\n", string(b))
 			return toml.Unmarshal(b, o)
 		})
 		sqlcreds *cache.Cache[Credentials] = cache.New(time.Duration(5)*time.Second, func(c *Credentials) error {
@@ -66,11 +64,7 @@ func main() {
 			}
 			return nil
 		})
-		connectionsMutex sync.Mutex
-		connections      map[net.Addr]*net.Conn
 	)
-	// Getting command line arguments
-	flag.Parse()
 
 	/*
 	 * Documentating Panics as they happen and then closing program.
