@@ -17,7 +17,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func ValidateSQL(maxAttempts, timeoutRate int, logger *log.Logger, opts *cache.Cache[Options], servCreds *cache.Cache[Credentials]) error {
+func ValidateSQL(maxAttempts, timeoutRate int, logger *log.Logger, opts *cache.Cache[Options]) error {
 
 	var (
 		o *Options

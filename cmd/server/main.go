@@ -53,17 +53,6 @@ func main() {
 			fmt.Printf("General Settings Data: %s\n", string(b))
 			return toml.Unmarshal(b, o)
 		})
-		sqlcreds *cache.Cache[Credentials] = cache.New(time.Duration(5)*time.Second, func(c *Credentials) error {
-			o, err := opts.Get()
-			if err != nil {
-				return err
-			}
-			c = &Credentials{
-				Username: o.Db.Username,
-				Password: o.Db.Password,
-			}
-			return nil
-		})
 	)
 
 	/*
@@ -107,7 +96,7 @@ func main() {
 	 * Validating the SQL Database
 	 */
 	MainLogger.Println("Validating Database Before Server Bootup")
-	if err = ValidateSQL(3, 500, MainLogger, opts, sqlcreds); err != nil {
+	if err = ValidateSQL(3, 500, MainLogger, opts); err != nil {
 		MainLogger.Fatalf("Failed to Validate SQL Server: %s", err)
 	}
 
@@ -134,7 +123,7 @@ func main() {
 			case "stop", "quit":
 				close()
 				waitgroup.Wait()
-				break
+				return
 			case "ls":
 				// list Connections
 			default:
@@ -146,6 +135,7 @@ func main() {
 		TuiMode(MainLogger, ctx, waitgroup, opts)
 		close()
 		waitgroup.Wait()
+		return
 	}
 
 }
@@ -182,5 +172,6 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 		return err
 	}
 
+	logger.Printf("Starting Dwarf Wars Server...")
 	return server.Start(opts, logger, nil, ctx)
 }

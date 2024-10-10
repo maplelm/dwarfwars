@@ -2,7 +2,7 @@
 Size                = 5         #MB
 Name                = "log.log" # Name of file to push logs to
 Path                = "./logs/" # Path for the above file is located
-Prefix              = "Server"
+Prefix              = "Server: "
 
 [Logging.Flags]
 UTC          = false

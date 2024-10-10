@@ -52,6 +52,7 @@ func (s *Server) Start(opts *cache.Cache[Options], logger *log.Logger, wgrp *syn
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			s.Listener.SetDeadline(time.Now().Add(time.Second))
 			if conn, err := s.Listener.AcceptTCP(); err != nil {
 				if errors.Is(err, net.ErrClosed) {
 					logger.Printf("Listener Close: %s", err)
