@@ -172,7 +172,7 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	server, err := NewServer(addr, 10, ConnectionHandlerFunc(EchoConnection))
+	server, err := NewServer(addr, 10, ConnectionHandlerFunc(CommandHandlerTest))
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		return err

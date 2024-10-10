@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/maplelm/dwarfwars/pkg/cache"
+	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
 type ConnectionHandler interface {
@@ -109,24 +111,24 @@ func (s *Server) connectionManager(logger *log.Logger, ctx context.Context) erro
 			s.connMutex.Lock()
 			s.Connections[conn.RemoteAddr()] = &conn
 			s.connMutex.Unlock()
-			go func() {
+			go func(c *net.Conn) {
+				defer (*c).Close()
+
 				s.connMutex.Lock()
-				s.Connections[conn.RemoteAddr()] = &conn
+				s.Connections[conn.RemoteAddr()] = c
 				s.connMutex.Unlock()
 
-				s.Handle.Serve(logger, ctx, &conn)
+				s.Handle.Serve(logger, ctx, c)
 
 				s.connMutex.Lock()
 				delete(s.Connections, conn.RemoteAddr())
 				s.connMutex.Unlock()
-			}()
+			}(&conn)
 		}
 	}
 }
 
 func EchoConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) {
-	defer (*conn).Close()
-
 	var (
 		data []byte = make([]byte, 2000)
 		n    int
@@ -150,5 +152,35 @@ func EchoConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) {
 		logger.Printf("Failed to Write data to Client: %s", err)
 	} else {
 		logger.Printf("No data Writen (%s)", (*conn).RemoteAddr())
+	}
+}
+
+func CommandHandlerTest(logger *log.Logger, ctx context.Context, conn *net.Conn) {
+	var fullData []byte
+	readCount := 0
+	data := make([]byte, 1024)
+	for {
+		n, err := (*conn).Read(data)
+		if err != nil && errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			logger.Printf("Connection (%s): %s", (*conn).RemoteAddr(), err)
+			break
+		}
+		readCount += n
+		fullData = append(fullData, data...)
+	}
+
+	cmd, err := command.Unmarshal(fullData[:readCount])
+	if err != nil {
+		logger.Printf("Connection Command Err (%s): %s", (*conn).RemoteAddr(), err)
+
+	}
+
+	logger.Printf("Incomming Command (%s):\n\tVersion: %d\n\tType: %d\n\tSize: %d\n\t%s\n", (*conn).RemoteAddr(), cmd.Version, cmd.Type, cmd.Size, string(cmd.Data))
+
+	_, err = (*conn).Write(cmd.Marshal())
+	if err != nil {
+		logger.Printf("Connection Error Sending Commend (%s): %s", (*conn).RemoteAddr(), err)
 	}
 }

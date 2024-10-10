@@ -1,9 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
+
+	"github.com/maplelm/dwarfwars/pkg/command"
 	//"github.com/maplelm/dwarfwars/pkg/logging"
 )
 
@@ -23,26 +27,43 @@ func main() {
 	}
 	defer conn.Close()
 
-	fmt.Println("Sending data: 'ping'")
-
-	wn, err := conn.Write([]byte("ping"))
+	_, err = conn.Write(command.Command{
+		Version: 1,
+		Type:    1,
+		Size:    uint16(len([]byte("This is a command"))),
+		Data:    []byte("This is a command"),
+	}.Marshal())
 	if err != nil {
-		fmt.Printf("Failed to Write data to socket: %s\n", err)
-		os.Exit(1)
+		fmt.Printf("Failed to Send command to server: %s\n", err)
 	}
 
 	fmt.Println("Reading Reply")
-	var data []byte = make([]byte, 2000)
-	rn, err := conn.Read(data)
+	var data []byte = make([]byte, 2024)
+	var fullData []byte
+	readCount := 0
+	for {
+		n, err := conn.Read(data)
+		if err != nil && errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			fmt.Printf("Failed to read data from connection: %s\n", err)
+			os.Exit(1)
+		}
+		readCount += n
+		fullData = append(fullData, data...)
+	}
+	//fullData = fullData[:readCount]
+
+	fmt.Printf("Unmarshaling: ")
+	for _, v := range fullData {
+		fmt.Printf("%b ", v)
+	}
+	fmt.Println()
+	cmd, err := command.Unmarshal(fullData)
 	if err != nil {
-		fmt.Printf("Failed to read response from server: %s\n", err)
+		fmt.Printf("Failed to Unmarshal Command: %s\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Response: %s\n", string(data))
 
-	if wn != rn {
-		fmt.Printf("written data does not match read data, W: %d, R: %d\n", wn, rn)
-	}
-
-	fmt.Printf("Server: %s\n", string(data))
+	fmt.Printf("Response:\n\tVersion: %d\n\tType: %d\n\tSize: %d\n\tData: %s\n", cmd.Version, cmd.Type, cmd.Size, string(data))
 }
