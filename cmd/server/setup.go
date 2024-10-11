@@ -62,7 +62,6 @@ func ValidateSQL(maxAttempts, timeoutRate int, logger *log.Logger, opts *cache.C
 				return err
 			}
 			for _, v := range strings.Split(string(b), ";") {
-				logger.Printf("SQL Validation Running Query: %s", v)
 				if len(strings.TrimSpace(v)) > 0 {
 					_, err = conn.Exec(v)
 					if err != nil {

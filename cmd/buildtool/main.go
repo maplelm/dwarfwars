@@ -29,47 +29,69 @@ func main() {
 
 	switch strings.ToLower(*target) {
 	case "server":
+		// Setting the Binary destination
 		if len(*output) == 0 {
 			*output = "./bin/server/"
 		}
+
 		fmt.Printf("Running Command (%s): %s\n", *target, fmt.Sprintf("go build -o %s ./cmd/server/", filepath.Join(*output, *exeName)))
-		c := exec.Command("go", fmt.Sprintf("build -o %s ./cmd/server/", filepath.Join(*output, *exeName)))
-		if o, err := c.Output(); err != nil {
-			fmt.Printf("Failed To Build Go Target (%s): %s\n\n%s\n", *target, err, o)
+
+		c := exec.Command("go", "build", "-o", filepath.Join(*output, *exeName), "./cmd/server/")
+		c.Dir, _ = os.Getwd()
+		c.Stderr = os.Stderr
+
+		// Building
+		if err := c.Run(); err != nil {
+			fmt.Printf("Failed to Run (%s): %s\n", *target, err)
 			os.Exit(1)
 		} else {
-			fmt.Printf("Target Built (%s): %s\n", *target, o)
+			fmt.Printf("Target Built: %s\n", *target)
 		}
+
+		// Running
 		if !*buildOnly {
-			fmt.Printf("Running Command (%s): %s\n", *target, fmt.Sprintf("./%s", *exeName))
+			fmt.Printf("Running Command (%s): %s\n", *target, fmt.Sprintf("%s", *exeName))
+
 			c = exec.Command(fmt.Sprintf("./%s", *exeName))
 			c.Dir = *output
-			if o, err := c.Output(); err != nil {
-				fmt.Printf("Failed To Run Go Target (%s): %s\n\t%s\n", *target, err, o)
+			c.Stderr = os.Stderr
+
+			if err := c.Run(); err != nil {
+				fmt.Printf("Failed to Run (%s): %s\n", *target, err)
 				os.Exit(1)
 			} else {
-				fmt.Printf("Ran Target (%s): %s\n", *target, o)
+				fmt.Printf("Ran Target: %s\n", *target)
 			}
 		}
 	case "client":
 		if len(*output) == 0 {
 			*output = "./bin/client/"
 		}
+
 		fmt.Printf("Running Command (%s): %s\n", *target, fmt.Sprintf("go build -o %s ./cmd/client/", filepath.Join(*output, *exeName)))
+
 		c := exec.Command("go", "build", "-o", filepath.Join(*output, *exeName), "./cmd/client/")
-		if o, err := c.Output(); err != nil {
-			fmt.Printf("Failed to Build Go Target: %s\n\t%s\n", *output, err)
+		c.Dir, _ = os.Getwd()
+		c.Stderr = os.Stderr
+
+		if err := c.Run(); err != nil {
+			fmt.Printf("Failed to Run (%s): %s\n", *target, err)
 			os.Exit(1)
 		} else {
-			fmt.Printf("Target Built (%s): %s\n", *target, o)
+			fmt.Printf("Target Built: %s\n", *target)
 		}
+
 		if !*buildOnly {
 			fmt.Printf("Running Command (%s): %s\n", *target, fmt.Sprintf("./%s", *exeName))
+
 			c = exec.Command(fmt.Sprintf("./%s", *exeName))
 			c.Dir = *output
+
 			if err := c.Run(); err != nil {
-				fmt.Printf("Failed To Run Go Target: %s\n\t%s\n", *output, err)
+				fmt.Printf("Failed to Run (%s): %s\n", *target, err)
 				os.Exit(1)
+			} else {
+				fmt.Printf("Ran Target: %s\n", *target)
 			}
 		}
 	default:

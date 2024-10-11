@@ -51,11 +51,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			//fmt.Printf("General Settings Data from file: %s\n", string(b))
-			err = toml.Unmarshal(b, o)
-			//b, err = toml.Marshal(o)
-			//fmt.Printf("General Setting Data Marshalled: %s\n", string(b))
-			return err
+			return toml.Unmarshal(b, o)
 		})
 	)
 

@@ -3,29 +3,31 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/maplelm/dwarfwars/cmd/server/pkg/client"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
 type ConnectionHandler interface {
-	Serve(*log.Logger, context.Context, *net.Conn)
+	Serve(*log.Logger, context.Context, *net.Conn) error
 }
 
 type ConnectionHandle struct {
-	f func(*log.Logger, context.Context, *net.Conn)
+	f func(*log.Logger, context.Context, *net.Conn) error
 }
 
-func (ch *ConnectionHandle) Serve(l *log.Logger, ctx context.Context, conn *net.Conn) {
-	ch.f(l, ctx, conn)
+func (ch *ConnectionHandle) Serve(l *log.Logger, ctx context.Context, conn *net.Conn) error {
+	return ch.f(l, ctx, conn)
 }
 
-func ConnectionHandlerFunc(f func(*log.Logger, context.Context, *net.Conn)) ConnectionHandler {
+func ConnectionHandlerFunc(f func(*log.Logger, context.Context, *net.Conn) error) ConnectionHandler {
 	obj := ConnectionHandle{
 		f: f,
 	}
@@ -38,9 +40,8 @@ type Server struct {
 	CC       chan net.Conn
 	Handle   ConnectionHandler
 
-	connMutex   sync.Mutex
-	Connections map[net.Addr]*net.Conn
-	conns       sync.WaitGroup
+	clientmutex sync.Mutex
+	clients     []string
 }
 
 func NewServer(addr *net.TCPAddr, chanSize int, handle ConnectionHandler) (*Server, error) {
@@ -49,11 +50,10 @@ func NewServer(addr *net.TCPAddr, chanSize int, handle ConnectionHandler) (*Serv
 		return nil, err
 	}
 	return &Server{
-		Connections: make(map[net.Addr]*net.Conn),
-		Addr:        addr,
-		Listener:    l,
-		Handle:      handle,
-		CC:          make(chan net.Conn, chanSize),
+		Addr:     addr,
+		Listener: l,
+		Handle:   handle,
+		CC:       make(chan net.Conn, chanSize),
 	}, nil
 }
 
@@ -87,15 +87,6 @@ func (s *Server) Start(opts *cache.Cache[Options], logger *log.Logger, wgrp *syn
 					logger.Printf("Listner Failed to Accept Incoming Connection: %s", err)
 				}
 			} else {
-				options, err := opts.Get()
-				if err != nil {
-					logger.Printf("Warning: Server Failed to Get Connection Deadlines from Settings, %s", err)
-					conn.SetReadDeadline(time.Now().Add(time.Duration(1) * time.Minute))
-					conn.SetWriteDeadline(time.Now().Add(time.Duration(1) * time.Minute))
-				} else {
-					conn.SetReadDeadline(time.Now().Add(time.Duration(options.Game.Timeouts.Read) * time.Millisecond))
-					conn.SetWriteDeadline(time.Now().Add(time.Duration(options.Game.Timeouts.Write) * time.Millisecond))
-				}
 				s.CC <- conn
 			}
 		}
@@ -108,22 +99,31 @@ func (s *Server) connectionManager(logger *log.Logger, ctx context.Context) erro
 		case <-ctx.Done():
 			return ctx.Err()
 		case conn := <-s.CC:
-			s.connMutex.Lock()
-			s.Connections[conn.RemoteAddr()] = &conn
-			s.connMutex.Unlock()
-			go func(c *net.Conn) {
-				defer (*c).Close()
 
-				s.connMutex.Lock()
-				s.Connections[conn.RemoteAddr()] = c
-				s.connMutex.Unlock()
+			id, err := client.New(&conn, time.Duration(5)*time.Second, 1000)
+			if err != nil {
+				fmt.Errorf("Error Creating Client from Connection: %s", err)
+				conn.Close()
+				continue
+			}
+			s.clientmutex.Lock()
+			s.clients = append(s.clients, id)
+			index := len(s.clients) - 1
+			s.clientmutex.Unlock()
 
-				s.Handle.Serve(logger, ctx, c)
+			c := client.GetClient(id)
+			if c != nil {
+				go func(index int) {
+					c.Serve(logger, ctx, &conn)
+					client.Disconect(id)
+					s.clientmutex.Lock()
+					s.clients = append(s.clients[:index], s.clients[index:]...)
+					s.clientmutex.Unlock()
 
-				s.connMutex.Lock()
-				delete(s.Connections, conn.RemoteAddr())
-				s.connMutex.Unlock()
-			}(&conn)
+				}(index)
+			} else {
+				panic(fmt.Errorf("Failed to get newly created client from active client list"))
+			}
 		}
 	}
 }
