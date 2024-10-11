@@ -26,6 +26,7 @@ var (
 	configPath *string = flag.String("c", "./config/", "location of settings files")
 	//savepath   *string = flag.String("w", "./saves/World/", "location of world/game data")
 	headless *bool = flag.Bool("h", false, "server will not use a tui and can be automated with scripts")
+	server   *Server
 )
 
 /*
@@ -129,6 +130,8 @@ func main() {
 				return
 			case "ls":
 				// list Connections
+			case "count":
+				fmt.Printf("Connections: %d\n", len(server.Connections))
 			default:
 				fmt.Printf("Invalid input (%s)\n", line)
 			}
@@ -172,7 +175,7 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	server, err := NewServer(addr, 10, ConnectionHandlerFunc(CommandHandlerTest))
+	server, err = NewServer(addr, 10, ConnectionHandlerFunc(CommandHandlerTest))
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		return err
