@@ -39,9 +39,8 @@ bin/*/*
 !bin/*/config/
 
 #ignore buildtool binary
-buildtool
+buildtool*
 !cmd/buildtool/
-
 
 .automate/
 
