@@ -128,7 +128,7 @@ func (s *Server) connectionManager(logger *log.Logger, ctx context.Context) erro
 	}
 }
 
-func EchoConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) {
+func EchoConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) error {
 	var (
 		data []byte = make([]byte, 2000)
 		n    int
@@ -153,9 +153,10 @@ func EchoConnection(logger *log.Logger, ctx context.Context, conn *net.Conn) {
 	} else {
 		logger.Printf("No data Writen (%s)", (*conn).RemoteAddr())
 	}
+	return nil
 }
 
-func CommandHandlerTest(logger *log.Logger, ctx context.Context, conn *net.Conn) {
+func CommandHandlerTest(logger *log.Logger, ctx context.Context, conn *net.Conn) error {
 	var fullData []byte
 	readCount := 0
 	data := make([]byte, 1024)
@@ -183,4 +184,5 @@ func CommandHandlerTest(logger *log.Logger, ctx context.Context, conn *net.Conn)
 	if err != nil {
 		logger.Printf("Connection Error Sending Commend (%s): %s", (*conn).RemoteAddr(), err)
 	}
+	return nil
 }

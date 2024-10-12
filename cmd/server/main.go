@@ -56,14 +56,14 @@ func main() {
 	)
 
 	/*
-	 * Documentating Panics as they happen and then closing program.
-	 */
-	defer func() {
-		if recover() != nil {
-			fmt.Printf("Panicing: %s\n", recover())
-			os.Exit(1)
-		}
-	}()
+		 * Documentating Panics as they happen and then closing program.
+		defer func() {
+			if recover() != nil {
+				fmt.Printf("Panicing: %s\n", recover().(string))
+				os.Exit(1)
+			}
+		}()
+	*/
 
 	/*
 	 * Configuring Logging
@@ -127,7 +127,7 @@ func main() {
 			case "ls":
 				// list Connections
 			case "count":
-				fmt.Printf("Connections: %d\n", len(server.Connections))
+				//fmt.Printf("Connections: %d\n", len(server.Connections))
 			default:
 				fmt.Printf("Invalid input (%s)\n", line)
 			}

@@ -29,6 +29,7 @@ go.work.sum
 **/*.log
 
 bin/
+!bin/*/config/
 
 .automate/
 
