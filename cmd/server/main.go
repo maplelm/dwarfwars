@@ -16,6 +16,8 @@ import (
 	"github.com/BurntSushi/toml"
 
 	// Project Packages
+	s "github.com/maplelm/dwarfwars/cmd/server/pkg/server"
+	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 )
 
@@ -26,7 +28,7 @@ var (
 	configPath *string = flag.String("c", "./config/", "location of settings files")
 	//savepath   *string = flag.String("w", "./saves/World/", "location of world/game data")
 	headless *bool = flag.Bool("h", false, "server will not use a tui and can be automated with scripts")
-	server   *Server
+	server   *s.Server
 )
 
 /*
@@ -41,8 +43,8 @@ func main() {
 	 */
 	var (
 		err       error
-		waitgroup *sync.WaitGroup       = new(sync.WaitGroup)
-		opts      *cache.Cache[Options] = cache.New(time.Duration(5)*time.Second, func(o *Options) error {
+		waitgroup *sync.WaitGroup             = new(sync.WaitGroup)
+		opts      *cache.Cache[types.Options] = cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
 			if o == nil {
 				return fmt.Errorf("Options pointer can not be nil")
 			}
@@ -142,11 +144,11 @@ func main() {
 
 }
 
-func TuiMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[Options]) error {
+func TuiMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
 	return nil
 }
 
-func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[Options]) error {
+func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
 	var (
 		err  error
 		addr *net.TCPAddr
@@ -171,7 +173,7 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	server, err = NewServer(addr, 10, ConnectionHandlerFunc(CommandHandlerTest))
+	server, err = NewServer(addr, 10)
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		return err

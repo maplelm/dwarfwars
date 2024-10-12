@@ -1,4 +1,4 @@
-package main
+package types
 
 type Options struct {
 	Logging struct {

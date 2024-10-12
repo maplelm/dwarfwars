@@ -1,20 +1,16 @@
-Services:
+version: '3.1'
+
+services:
+
   db:
     image: mariadb:latest
+    restart: always
     ports:
       - "3306:3306"
     volumes:
       - sql-data:/var/lib/mysql
-  app:
-    image:
-      build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./pkg/:/usr/app/pkg
-      - ./cmd/:/usr/app/cmd
-network:
-  app
+    environment:
+      MARIADB_ROOT_PASSWORD: "password"
 volumes:
   sql-data:
     driver: local
