@@ -20,6 +20,7 @@
 # Go workspace file
 go.work
 go.work.sum
+**/go.sum
 
 # env file
 .env
@@ -28,7 +29,7 @@ go.work.sum
 *.log
 **/*.log
 
-#bin configs
+# ignore bin folder unless it is a config or infastrucutre file (docker)
 bin/*
 !bin/*/
 
@@ -36,6 +37,10 @@ bin/*/*
 !bin/*/*dockerfile*
 !bin/*/*compose*
 !bin/*/config/
+
+#ignore buildtool binary
+buildtool
+!cmd/buildtool/
 
 
 .automate/
