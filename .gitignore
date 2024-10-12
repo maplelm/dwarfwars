@@ -28,10 +28,19 @@ go.work.sum
 *.log
 **/*.log
 
-bin/
+#bin configs
+bin/*
+!bin/*/
+
+bin/*/*
+!bin/*/*dockerfile*
+!bin/*/*compose*
 !bin/*/config/
+
 
 .automate/
 
 __debug*
 **/__debug*
+
+**/.DS_Store

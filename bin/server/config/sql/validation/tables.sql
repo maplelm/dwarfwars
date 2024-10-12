@@ -1,0 +1,22 @@
+-- ----------------- --
+-- DWARF_WARS TABLES --
+-- ----------------- --
+CREATE TABLE IF NOT EXISTS DWARF_WARS.WORLDS (
+	ID int AUTO_INCREMENT,
+	DIR TEXT NOT NULL,
+	CREATED datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	LAST_USED datetime,
+	Primary Key (ID)
+);
+
+-- -------------------------- --
+-- DWARF_WARS_SECURITY TABLES --
+-- -------------------------- --
+CREATE TABLE IF NOT EXISTS DWARF_WARS_SECURITY.USERS (
+	ID INT AUTO_INCREMENT,
+	USERNAME VARCHAR(255) NOT NULL,
+	PASSWORD VARCHAR(255) NOT NULL,
+	CREATED datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	LAST_SEEN datetime,
+	Primary Key (ID)
+);
