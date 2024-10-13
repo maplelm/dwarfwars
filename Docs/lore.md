@@ -4,28 +4,49 @@
 
 ### Theme
 
-Possible themes for the game:
 + High Fantasy
   + World not comparable to our own
   + Lord of the Rings
   + Game of Thrones
   + Harry Potter (in the wizarding world)
-+ Low Fantasy
-  + World Comparable to our own
-  + Things are less fantastical and the fantasy is more suttle
-  + Super Heros like Batman or Green Arrow
-  + Harry Potter (When they are in the muggle world)
-+ Epic Fantasy
 + Science Fantasy
 + Steampunk
-+ Urban Fantasy
-+ Historical Fantasy
-+ Comic Fantasy
-+ Alternative History
 + Mythic Fiction
+  + Deeply Religous and philisophical
+  + full of Mystisium
 + Dark Fantasy
 + Grimdark
-+ Contemporary Fantasy
-+ Magical Realism
-+ Fairy Tale
-+ Fairy Tale Fantasy
+  + The Poppy Wars
+
+## World Building
+
+### Races / Species
+
+#### Humans
+
+#### Dwarfs
+
+#### Elves
+
+#### Goblins
+
+#### Trolls
+
+#### Mole-people
+
+#### Living Plants
+
+Mostly trees
+
+### World Resources
+
+#### Ore
+
+#### Plants
+
+#### Chemicals
+
+### World Attributes
+
+Tempature: Normal to real world Hot in the middle and temporate -> cold as you move away from the top and bottom
+
