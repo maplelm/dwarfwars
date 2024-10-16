@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -7,10 +8,57 @@ import (
 	"net"
 	"os"
 
+
 	"github.com/maplelm/dwarfwars/pkg/command"
 	//"github.com/maplelm/dwarfwars/pkg/logging"
 )
+*/
 
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+type Scene struct {
+}
+
+type Game struct {
+	Scenes      []Scene
+	ActiveScene int
+
+	Camera rl.Camera2D
+
+	Quiting bool
+}
+
+func (g *Game) Init() {}
+func (g *Game) Run() {
+	for !g.Quiting {
+		g.Network()
+		g.UserInput()
+		g.Update()
+		g.Draw()
+	}
+}
+func (g *Game) UserInput() {}
+func (g *Game) Update()    {}
+func (g *Game) Network()   {}
+func (g *Game) Draw()      {}
+
+func main() {
+	rl.InitWindow(800, 450, "Raylib [core] example - basic window")
+	defer rl.CloseWindow()
+
+	rl.SetTargetFPS(60)
+
+	for !rl.WindowShouldClose() {
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.RayWhite)
+		rl.DrawText("Contgrats! You created your first window!", 190, 200, 20, rl.LightGray)
+		rl.EndDrawing()
+	}
+}
+
+/*
 func main() {
 	fmt.Println("Testing Game Server...")
 
@@ -67,3 +115,4 @@ func main() {
 
 	fmt.Printf("Response:\n\tVersion: %d\n\tType: %d\n\tSize: %d\n\tData: %s\n", cmd.Version, cmd.Type, cmd.Size, string(data))
 }
+*/
