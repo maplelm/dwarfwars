@@ -58,16 +58,6 @@ func main() {
 	)
 
 	/*
-		 * Documentating Panics as they happen and then closing program.
-		defer func() {
-			if recover() != nil {
-				fmt.Printf("Panicing: %s\n", recover().(string))
-				os.Exit(1)
-			}
-		}()
-	*/
-
-	/*
 	 * Configuring Logging
 	 */
 	logflags := 0
@@ -102,14 +92,10 @@ func main() {
 		MainLogger.Fatalf("Failed to Validate SQL Server: %s", err)
 	}
 
-	/*
-	 * Creating the main application context.
-	 */
+	// Creating the main application context.
 	ctx, close := context.WithCancel(context.Background())
 
-	/*
-	 * Start the server based on what value the headless flag has
-	 */
+	// Start the server based on what value the headless flag has
 	switch *headless {
 	case true:
 		MainLogger.Println("Server Mode: Headless")
@@ -173,7 +159,7 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	server, err = NewServer(addr, 10)
+	server, err = s.New(addr, 10)
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		return err

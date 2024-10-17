@@ -2,9 +2,7 @@ package client
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -15,62 +13,30 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
-const (
-	idsize     = 255
-	buffersize = 1024
-)
-
-var matrixMutex sync.RWMutex
-var unusedIdMatrix []string = []string{}
-
-var activemutex sync.RWMutex
-var active map[string]*Client = make(map[string]*Client)
-
 type Client struct {
-	ID          string
 	TimeoutRate time.Duration
-	readQueue   chan command.Command
-	writeQueue  chan command.Command
-	connection  *net.Conn
 
-	rtMutex      sync.RWMutex
+	readmut      sync.RWMutex
 	readtimeouts int
+
+	BufferSize int
+
+	id         string
+	readQueue  chan command.Command
+	writeQueue chan command.Command
+	connection *net.Conn
 }
 
-func New(c *net.Conn, tor time.Duration, qs int) (string, error) {
-	var id string
-	if len(unusedIdMatrix) > 0 {
-		matrixMutex.Lock()
-		id = unusedIdMatrix[0]
-		unusedIdMatrix = unusedIdMatrix[1:]
-		matrixMutex.Unlock()
-	} else {
-		var bytes []byte = make([]byte, idsize)
-		for {
-			_, err := rand.Read(bytes)
-			if err != nil {
-				return "", fmt.Errorf("Failed to Generate Client ID: %s", err)
-			}
-			id = string(bytes)
-			if _, ok := active[id]; ok {
-				continue
-			}
-			break
-		}
-
-	}
-
-	activemutex.Lock()
-	defer activemutex.Unlock()
-	active[id] = &Client{
-		ID:           id,
+func New(c *net.Conn, tor time.Duration, qs int, id string, bs int) (*Client, string) {
+	return &Client{
+		id:           id,
 		TimeoutRate:  tor,
+		BufferSize:   bs,
 		connection:   c,
 		readQueue:    make(chan command.Command, qs),
 		writeQueue:   make(chan command.Command, qs),
 		readtimeouts: 0,
-	}
-	return id, nil
+	}, id
 }
 
 func (c *Client) Read() (*command.Command, int) {
@@ -95,11 +61,11 @@ func (c *Client) Serve(logger *log.Logger, ctx context.Context, conn *net.Conn) 
 
 	// Read Inbound Data
 	go func() {
-		err <- read(logger, ctx, c.readQueue, conn, c.TimeoutRate, &(c.readtimeouts), &(c.rtMutex))
+		err <- c.read(logger, ctx)
 	}()
 	// Write Outbound Data
 	go func() {
-		err <- write(logger, ctx, c.writeQueue, conn)
+		err <- c.write(logger, ctx)
 	}()
 
 	select {
@@ -115,15 +81,15 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) TimedOut() bool {
-	c.rtMutex.RLock()
-	defer c.rtMutex.RUnlock()
+	c.readmut.RLock()
+	defer c.readmut.RUnlock()
 	return c.readtimeouts > 15
 }
 
-func read(logger *log.Logger, ctx context.Context, c chan<- command.Command, conn *net.Conn, tor time.Duration, timeouts *int, toMutex *sync.RWMutex) error {
+func (c *Client) read(logger *log.Logger, ctx context.Context) error {
 	var (
-		buf    []byte = make([]byte, buffersize)
-		msg    []byte = make([]byte, buffersize*3)
+		buf    []byte = make([]byte, c.BufferSize)
+		msg    []byte = make([]byte, c.BufferSize*3)
 		buflen int
 	)
 	for {
@@ -134,17 +100,17 @@ func read(logger *log.Logger, ctx context.Context, c chan<- command.Command, con
 			msg = []byte{}
 			buflen = 0
 			for {
-				(*conn).SetReadDeadline(time.Now().Add(tor)) // tor: time out rate
-				n, err := (*conn).Read(buf)
+				(*c.connection).SetReadDeadline(time.Now().Add(c.TimeoutRate)) // tor: time out rate
+				n, err := (*c.connection).Read(buf)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						break
 					}
 					var opErr net.Error
 					if errors.As(err, &opErr) && opErr.Timeout() {
-						toMutex.Lock()
-						*timeouts += 1
-						toMutex.Unlock()
+						c.readmut.Lock()
+						c.readtimeouts += 1
+						c.readmut.Unlock()
 					}
 					if errors.Is(err, net.ErrClosed) {
 						return err
@@ -153,9 +119,9 @@ func read(logger *log.Logger, ctx context.Context, c chan<- command.Command, con
 						return err
 					}
 				}
-				toMutex.Lock()
-				*timeouts = 0
-				toMutex.Unlock()
+				c.readmut.Lock()
+				c.readtimeouts = 0
+				c.readmut.Unlock()
 				buflen += n
 				msg = append(msg, buf...)
 			}
@@ -165,26 +131,26 @@ func read(logger *log.Logger, ctx context.Context, c chan<- command.Command, con
 				logger.Printf("Failed to Unmarshal Message into a command: %s", err)
 				continue
 			}
-			c <- *cmd
+			c.readQueue <- *cmd
 		}
 	}
 }
 
-func write(logger *log.Logger, ctx context.Context, c <-chan command.Command, conn *net.Conn) error {
+func (c *Client) write(logger *log.Logger, ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cmd := <-c:
+		case cmd := <-c.writeQueue:
 			for i := 0; i < 3; i++ {
-				if _, err := (*conn).Write(cmd.Marshal()); err != nil {
+				if _, err := (*c.connection).Write(cmd.Marshal()); err != nil {
 					if opErr, ok := err.(*net.OpError); ok && !opErr.Temporary() {
-						logger.Printf("Connection Closed: %s", (*conn).RemoteAddr())
+						logger.Printf("Connection Closed: %s", (*c.connection).RemoteAddr())
 						return ctx.Err()
 					}
-					logger.Printf("Connection Failed to Write Data (%d) %s", i+1, (*conn).RemoteAddr())
+					logger.Printf("Connection Failed to Write Data (%d) %s", i+1, (*c.connection).RemoteAddr())
 					if i == 2 {
-						logger.Printf("Connection Failed to Write Data 3 times, giving up (%s)", (*conn).RemoteAddr())
+						logger.Printf("Connection Failed to Write Data 3 times, giving up (%s)", (*c.connection).RemoteAddr())
 					} else {
 						time.Sleep(100 * time.Nanosecond)
 					}
@@ -196,21 +162,8 @@ func write(logger *log.Logger, ctx context.Context, c <-chan command.Command, co
 	}
 }
 
-func GetClient(id string) *Client {
-	activemutex.RLock()
-	defer activemutex.RUnlock()
-	if c, ok := active[id]; ok {
-		return c
-	}
-	return nil
-}
-
-func Disconect(id string) error {
-	if _, ok := active[id]; ok {
-		activemutex.Lock()
-		defer activemutex.Unlock()
-		delete(active, id)
-		return nil
-	}
-	return fmt.Errorf("Invalid id: %s", id)
+func (c *Client) Disconect() error {
+	close(c.readQueue)
+	close(c.writeQueue)
+	return (*c.connection).Close()
 }

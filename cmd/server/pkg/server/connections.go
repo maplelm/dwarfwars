@@ -36,17 +36,10 @@ func (s *Server) connMgr(logger *log.Logger, ctx context.Context) error {
 	}
 }
 
-func (s *Server) addClient(conn *net.Conn, tor time.Duration, qs int) (string, int, error) {
-	id, err := client.New(conn, tor, qs)
-	if err != nil {
-		return "", -1, err
-	}
-	// append the client id to the list of clients the server has
-	s.clientmutex.Lock()
-	s.clients = append(s.clients, id)
-	index := len(s.clients) - 1
-	s.clientmutex.Unlock()
-	return id, index, nil
+func (s *Server) addClient(conn *net.Conn, tor time.Duration, qs int) (*client.Client, string, error) {
+	c, id, err := s.clients.Connect(conn)
+
+	return c, id, err
 }
 
 func (s *Server) handle(index int, c *client.Client, logger *log.Logger, ctx context.Context, conn *net.Conn) error {

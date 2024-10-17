@@ -11,16 +11,33 @@ import (
 	"time"
 
 	// Project Packages
+	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 
 	// Drivers
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func ValidateSQL(maxAttempts, timeoutRate int, logger *log.Logger, opts *cache.Cache[Options]) error {
+/*
+# ValidateSQL
+
+This fucntion valdiates that the execpted Mariadb sql database is working properly and has the exected databases and tables before the server offically starts up. If the database is not in working order the server will not work.
+
+## Variables
+
+- maxAttempts (int): Number of times server will try and revalidate the SQL database before giving up.
+- timeoutRate (int): The base rate that the server will wait inbetween each validation attempt.
+- logger (*log.Logger): used to log function activity
+- opts (*cache.Cache[types.Options]): struct of settings the server needs to operate.
+
+## Returns
+
+- Error
+*/
+func ValidateSQL(maxAttempts, timeoutRate int, logger *log.Logger, opts *cache.Cache[types.Options]) error {
 
 	var (
-		o *Options
+		o *types.Options
 		//creds *Credentials
 		conn *sql.DB
 		err  error

@@ -16,46 +16,15 @@ import (
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
+
+	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
 )
 
-type Scene struct {
-}
-
-type Game struct {
-	Scenes      []Scene
-	ActiveScene int
-
-	Camera rl.Camera2D
-
-	Quiting bool
-}
-
-func (g *Game) Init() {}
-func (g *Game) Run() {
-	for !g.Quiting {
-		g.Network()
-		g.UserInput()
-		g.Update()
-		g.Draw()
-	}
-}
-func (g *Game) UserInput() {}
-func (g *Game) Update()    {}
-func (g *Game) Network()   {}
-func (g *Game) Draw()      {}
-
 func main() {
-	rl.InitWindow(800, 450, "Raylib [core] example - basic window")
-	defer rl.CloseWindow()
-
+	g := game.New(800.0, 450.0, "Dwarf Wars")
+	g.Scenes = append(g.Scenes, &testlevel{})
 	rl.SetTargetFPS(60)
-
-	for !rl.WindowShouldClose() {
-		rl.BeginDrawing()
-		rl.ClearBackground(rl.RayWhite)
-		rl.DrawText("Contgrats! You created your first window!", 190, 200, 20, rl.LightGray)
-		rl.EndDrawing()
-	}
+	g.Run()
 }
 
 /*

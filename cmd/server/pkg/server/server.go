@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/maplelm/dwarfwars/cmd/server/pkg/client"
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 )
@@ -17,7 +18,7 @@ type Server struct {
 	CC       chan net.Conn // connection channel
 
 	clientmutex sync.Mutex
-	clients     []string
+	clients     client.Factory
 
 	quit chan struct{}
 }
