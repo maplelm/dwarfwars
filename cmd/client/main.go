@@ -1,5 +1,39 @@
 package main
 
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+
+	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
+)
+
+func main() {
+	g := game.New(800.0, 450.0, "Dwarf Wars", []game.Handler{&testlevel{}, &testlevel2{}, &level{}})
+	rl.SetTargetFPS(60)
+	g.Run()
+}
+
+type level struct{}
+
+func (l *level) Init(g *game.Game) error {
+	return nil
+}
+
+func (l *level) Update(g *game.Game, nd [][]byte) error {
+	return nil
+}
+
+func (l *level) UserInput(g *game.Game) error {
+	if rl.IsKeyPressed(rl.KeyEnter) && !rl.IsKeyPressedRepeat(rl.KeyEnter) {
+		g.ActiveScene = 0
+	}
+	return nil
+}
+
+func (l *level) Draw() error {
+	rl.DrawText("Level from the main package", 20, 20, 20, rl.LightGray)
+	return nil
+}
+
 /*
 import (
 	"errors"
@@ -13,19 +47,6 @@ import (
 	//"github.com/maplelm/dwarfwars/pkg/logging"
 )
 */
-
-import (
-	rl "github.com/gen2brain/raylib-go/raylib"
-
-	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
-)
-
-func main() {
-	g := game.New(800.0, 450.0, "Dwarf Wars")
-	g.Scenes = append(g.Scenes, &testlevel{})
-	rl.SetTargetFPS(60)
-	g.Run()
-}
 
 /*
 func main() {
