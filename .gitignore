@@ -37,6 +37,7 @@ bin/*/*
 !bin/*/*dockerfile*
 !bin/*/*compose*
 !bin/*/config/
+!bin/*/assets/
 
 #ignore buildtool binary
 buildtool*
