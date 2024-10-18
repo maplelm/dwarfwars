@@ -48,3 +48,9 @@ __debug*
 **/__debug*
 
 **/.DS_Store
+
+# debug binary files
+bt
+test
+client
+server
