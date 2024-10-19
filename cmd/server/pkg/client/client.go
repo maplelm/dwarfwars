@@ -15,6 +15,7 @@ import (
 
 type Client struct {
 	TimeoutRate time.Duration
+	Connection  *net.Conn
 
 	readmut      sync.RWMutex
 	readtimeouts int
@@ -24,7 +25,6 @@ type Client struct {
 	id         string
 	readQueue  chan command.Command
 	writeQueue chan command.Command
-	connection *net.Conn
 }
 
 func New(c *net.Conn, tor time.Duration, qs int, id string, bs int) (*Client, string) {
@@ -32,11 +32,15 @@ func New(c *net.Conn, tor time.Duration, qs int, id string, bs int) (*Client, st
 		id:           id,
 		TimeoutRate:  tor,
 		BufferSize:   bs,
-		connection:   c,
+		Connection:   c,
 		readQueue:    make(chan command.Command, qs),
 		writeQueue:   make(chan command.Command, qs),
 		readtimeouts: 0,
 	}, id
+}
+
+func (c *Client) GetID() string {
+	return c.id
 }
 
 func (c *Client) Read() (*command.Command, int) {
@@ -68,16 +72,21 @@ func (c *Client) Serve(logger *log.Logger, ctx context.Context, conn *net.Conn) 
 		err <- c.write(logger, ctx)
 	}()
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case e := <-err:
-		return e
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case e := <-err:
+			return e
+		case msg := <-c.readQueue:
+			logger.Printf(string(msg.Marshal()))
+			c.writeQueue <- msg
+		}
 	}
 }
 
 func (c *Client) Close() error {
-	return (*c.connection).Close()
+	return (*c.Connection).Close()
 }
 
 func (c *Client) TimedOut() bool {
@@ -88,50 +97,111 @@ func (c *Client) TimedOut() bool {
 
 func (c *Client) read(logger *log.Logger, ctx context.Context) error {
 	var (
-		buf    []byte = make([]byte, c.BufferSize)
-		msg    []byte = make([]byte, c.BufferSize*3)
-		buflen int
+		header       []byte = make([]byte, command.HeaderSize/8)
+		buffer       []byte
+		msg          []byte
+		timeoutCount int = 0
 	)
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			msg = []byte{}
-			buflen = 0
-			for {
-				(*c.connection).SetReadDeadline(time.Now().Add(c.TimeoutRate)) // tor: time out rate
-				n, err := (*c.connection).Read(buf)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
-					var opErr net.Error
-					if errors.As(err, &opErr) && opErr.Timeout() {
-						c.readmut.Lock()
-						c.readtimeouts += 1
-						c.readmut.Unlock()
-					}
-					if errors.Is(err, net.ErrClosed) {
-						return err
-					}
-					if errors.Is(err, syscall.ECONNRESET) {
-						return err
-					}
+
+			_, err := (*c.Connection).Read(header)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return err
 				}
-				c.readmut.Lock()
-				c.readtimeouts = 0
-				c.readmut.Unlock()
-				buflen += n
-				msg = append(msg, buf...)
+				var opErr net.Error
+				if errors.As(err, &opErr) && opErr.Timeout() {
+					timeoutCount++
+					continue
+				}
+				if errors.Is(err, syscall.ECONNRESET) {
+					return err
+				}
 			}
-			msg = msg[:buflen]
+			l, _, err := command.ValidateHeader(header)
+			if err != nil {
+				logger.Printf("failed to validate header: %s", err)
+				continue
+			}
+
+			buffer = make([]byte, l)
+			n, err := (*c.Connection).Read(buffer)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return err
+				}
+				var opErr net.Error
+				if errors.As(err, &opErr) && opErr.Timeout() {
+					timeoutCount++
+					continue
+				}
+				if errors.Is(err, syscall.ECONNRESET) {
+					return err
+				}
+			}
+			if n != int(l) {
+				logger.Printf("Warning, did not get expected command length from client: %d, %d", n, l)
+			}
+
+			msg = make([]byte, int(l)+(int(command.HeaderSize/8)))
+			for i, v := range header {
+				msg[i] = v
+			}
+			for i, v := range buffer {
+				msg[i+int(int(command.HeaderSize)/8)] = v
+			}
+
 			cmd, err := command.Unmarshal(msg)
 			if err != nil {
-				logger.Printf("Failed to Unmarshal Message into a command: %s", err)
+				logger.Printf("Error Unmarshalling command: %s", err)
 				continue
 			}
 			c.readQueue <- *cmd
+
+			/*
+				msg = []byte{}
+				buflen = 0
+				for {
+					//(*c.Connection).SetReadDeadline(time.Now().Add(c.TimeoutRate)) // tor: time out rate
+					n, err := (*c.Connection).Read(buf)
+					if err != nil {
+						logger.Printf("Read Error (%s): %s", (*c.Connection).RemoteAddr(), err)
+						if errors.Is(err, io.EOF) {
+							break
+						}
+						var opErr net.Error
+						if errors.As(err, &opErr) && opErr.Timeout() {
+							/*
+								c.readmut.Lock()
+								c.readtimeouts += 1
+								c.readmut.Unlock()
+						}
+						if errors.Is(err, net.ErrClosed) {
+							return err
+						}
+						if errors.Is(err, syscall.ECONNRESET) {
+							return err
+						}
+					}
+					/*
+						c.readmut.Lock()
+						c.readtimeouts = 0
+						c.readmut.Unlock()
+					buflen += n
+					msg = append(msg, buf...)
+				}
+				msg = msg[:buflen]
+				cmd, err := command.Unmarshal(msg)
+				if err != nil {
+					logger.Printf("Failed to Unmarshal Message into a command: %s", err)
+					continue
+				}
+				c.readQueue <- *cmd
+			*/
 		}
 	}
 }
@@ -143,14 +213,14 @@ func (c *Client) write(logger *log.Logger, ctx context.Context) error {
 			return ctx.Err()
 		case cmd := <-c.writeQueue:
 			for i := 0; i < 3; i++ {
-				if _, err := (*c.connection).Write(cmd.Marshal()); err != nil {
+				if _, err := (*c.Connection).Write(cmd.Marshal()); err != nil {
 					if opErr, ok := err.(*net.OpError); ok && !opErr.Temporary() {
-						logger.Printf("Connection Closed: %s", (*c.connection).RemoteAddr())
+						logger.Printf("Connection Closed: %s", (*c.Connection).RemoteAddr())
 						return ctx.Err()
 					}
-					logger.Printf("Connection Failed to Write Data (%d) %s", i+1, (*c.connection).RemoteAddr())
+					logger.Printf("Connection Failed to Write Data (%d) %s", i+1, (*c.Connection).RemoteAddr())
 					if i == 2 {
-						logger.Printf("Connection Failed to Write Data 3 times, giving up (%s)", (*c.connection).RemoteAddr())
+						logger.Printf("Connection Failed to Write Data 3 times, giving up (%s)", (*c.Connection).RemoteAddr())
 					} else {
 						time.Sleep(100 * time.Nanosecond)
 					}
@@ -165,5 +235,5 @@ func (c *Client) write(logger *log.Logger, ctx context.Context) error {
 func (c *Client) Disconect() error {
 	close(c.readQueue)
 	close(c.writeQueue)
-	return (*c.connection).Close()
+	return (*c.Connection).Close()
 }

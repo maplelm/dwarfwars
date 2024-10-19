@@ -56,7 +56,7 @@ func (f *Factory) Connect(c *net.Conn) (*Client, string, error) {
 	f.activeClients[id] = &Client{
 		id:           id,
 		TimeoutRate:  f.TimeoutRate,
-		connection:   c,
+		Connection:   c,
 		readQueue:    make(chan command.Command, f.BufferSize),
 		writeQueue:   make(chan command.Command, f.BufferSize),
 		readtimeouts: 0,
