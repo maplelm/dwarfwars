@@ -4,6 +4,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
+	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
 func main() {
@@ -12,19 +13,26 @@ func main() {
 	g.Run()
 }
 
-type level struct{}
+type level struct {
+	init bool
+}
 
 func (l *level) Init(g *game.Game) error {
+	l.init = true
 	return nil
 }
 
-func (l *level) Update(g *game.Game, nd [][]byte) error {
+func (l *level) IsInitialized() bool {
+	return l.init
+}
+
+func (l *level) Update(g *game.Game, cmds []*command.Command) error {
 	return nil
 }
 
 func (l *level) UserInput(g *game.Game) error {
 	if rl.IsKeyPressed(rl.KeyEnter) && !rl.IsKeyPressedRepeat(rl.KeyEnter) {
-		g.ActiveScene = 0
+		return g.SetScene(0)
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/client"
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
@@ -18,7 +19,7 @@ type Server struct {
 	CC       chan net.Conn // connection channel
 
 	clientmutex sync.Mutex
-	clients     client.Factory
+	clients     *client.Factory
 
 	quit chan struct{}
 }
@@ -32,6 +33,7 @@ func New(addr *net.TCPAddr, chanSize int) (*Server, error) {
 		Addr:     addr,
 		Listener: l,
 		CC:       make(chan net.Conn, chanSize),
+		clients:  client.NewFactory(255, 1024, time.Duration(5)*time.Second),
 	}, nil
 }
 
@@ -40,12 +42,17 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 		wgrp.Add(1)
 		defer wgrp.Done()
 	}
+
+	// Create server base context
 	serverCtx, close := context.WithCancel(ctx)
 
+	// defer the stopping of the server context and then close the TCP listener
 	defer s.Listener.Close()
 	defer close()
 
+	// Start a new thread that manages the incoming connections
 	go s.connMgr(logger, serverCtx)
+	// listen for incoming connections
 	go s.listen(logger)
 
 	////////////////////////////////////////
@@ -53,8 +60,10 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 	////////////////////////////////////////
 	select {
 	case <-ctx.Done():
+		// stop if the application context is closed
 		return ctx.Err()
 	case <-s.quit:
+		// stop if the quit funciton is called from anywhere else in the application
 		return nil
 	}
 }

@@ -51,7 +51,7 @@ __debug*
 **/.DS_Store
 
 # debug binary files
-bt
-test
-client
-server
+/bt
+/test
+/client
+/server

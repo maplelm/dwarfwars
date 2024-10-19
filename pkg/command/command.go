@@ -14,7 +14,7 @@ type CommandType uint8
 type CommandVersion uint8
 
 type Command struct {
-	Version CommandVersion // 4 bits
+	Version CommandVersion // 8 bits
 	Type    CommandType    // 8 bits
 	Size    uint16         // 16 bits (max command size: 65_536 bytes)
 	Data    []byte
@@ -34,10 +34,10 @@ func New(t CommandType, d []byte) (*Command, error) {
 
 func (c Command) Marshal() []byte {
 	bytes := make([]byte, 4)
-	bytes[0] = byte(c.Version<<4) + byte(c.Type&0x0F)
-	bytes[1] = byte(c.Type&0xF0) + byte(c.Size>>12)
-	bytes[2] = byte((c.Size & 0xFF0) >> 4)
-	bytes[3] = byte((c.Size & 0x0F) << 4)
+	bytes[0] = byte(c.Version)
+	bytes[1] = byte(c.Type)
+	bytes[2] = byte((c.Size & 0xFF00) >> 8)
+	bytes[3] = byte(c.Size & 0xFF)
 	return append(bytes, c.Data...)
 
 }
@@ -47,9 +47,25 @@ func Unmarshal(d []byte) (*Command, error) {
 		return nil, fmt.Errorf("Malformed Command (%d): %s", len(d), string(d))
 	}
 	return &Command{
-		Version: CommandVersion((d[0] & 0xF0) >> 4),
-		Type:    CommandType(d[0]&0x0F) + CommandType((d[1] & 0xF0)),
-		Size:    (uint16((d[1] & 0x0F)) << 12) + (uint16(d[2]) << 4) + uint16((d[3]&0xF0)>>4),
+		Version: CommandVersion(d[0]),
+		Type:    CommandType(d[1]),
+		Size:    ((uint16(d[2]) << 8) + uint16(d[3])),
 		Data:    d[4:],
 	}, nil
+}
+
+func ValidateHeader(header []byte) (msgSize uint16, cmd CommandType, err error) {
+	if len(header) < 4 {
+		err = fmt.Errorf("malformed header")
+		return
+	}
+	if CommandVersion(header[0]) != CurrentVersion {
+		err = fmt.Errorf("version missmatch, header version :%d, Expected Version: %d", CommandVersion(header[0]), CurrentVersion)
+		return
+	}
+
+	msgSize = uint16((uint16(header[2]) << 8) + uint16(header[3]))
+	cmd = CommandType(header[1])
+
+	return
 }

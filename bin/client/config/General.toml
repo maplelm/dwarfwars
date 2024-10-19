@@ -1,0 +1,8 @@
+[General_Settings]
+
+[Network_Settings]
+Address = "127.0.0.1"
+Port = 3_000
+Buffer_Size = 1_024
+
+[Logging_Settings]
