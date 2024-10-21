@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -93,9 +94,9 @@ func (g *Game) Run() {
 	ctx, ctxclose := context.WithCancel(context.Background())
 
 	defer rl.CloseWindow()
-	defer g.networkWait.Wait()
 	defer close(g.ReadQueue)
 	defer close(g.WriteQueue)
+	defer g.networkWait.Wait()
 	defer ctxclose()
 
 	if !g.Scenes[g.activeScene].IsInitialized() {
@@ -151,16 +152,18 @@ func (g *Game) Network(ctx context.Context) {
 
 	// Reading to network connection
 	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context) {
-		timeoutCount := 0
-		header := make([]byte, command.HeaderSize)
-		buffer := make([]byte, opts.Network.BufferSize)
-		msg := make([]byte, opts.Network.BufferSize*3)
+		var (
+			timeoutCount int    = 0
+			header       []byte = make([]byte, command.HeaderSize)
+			buffer       []byte = make([]byte, int(math.Pow(2, 16)))
+			msg          []byte = make([]byte, int(math.Pow(2, 16))+int(command.HeaderSize/8))
+		)
 		for !rl.WindowShouldClose() {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				_, err := (*c).Read(header)
+				n, err := (*c).Read(header)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return
@@ -174,14 +177,20 @@ func (g *Game) Network(ctx context.Context) {
 						return
 					}
 				}
+				fmt.Printf("Header (%d): %s\n", n, string(header))
 				l, _, err := command.ValidateHeader(header)
 				if err != nil {
 					fmt.Printf("failed to validate header: %s\n", err)
+					var e error = nil
+					for e != io.EOF {
+						_, e = (*c).Read(buffer)
+					}
 					continue
+				} else {
+					fmt.Printf("data size: %d\n", l)
 				}
 
-				buffer = make([]byte, l)
-				n, err := (*c).Read(buffer)
+				n, err = (*c).Read(buffer)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return
@@ -198,12 +207,11 @@ func (g *Game) Network(ctx context.Context) {
 				if n != int(l) {
 					fmt.Printf("Warning, did not get expected command length from server: %d, %d\n", n, l)
 				}
-				msg = make([]byte, int(l)+(int(command.HeaderSize)/8))
 				for i, v := range header {
 					msg[i] = v
 				}
-				for i, v := range buffer {
-					msg[i+int(int(command.HeaderSize)/8)] = v
+				for i := 0; i < int(l); i++ {
+					msg[i+int(command.HeaderSize)] = buffer[i]
 				}
 
 				cmd, err := command.Unmarshal(msg)
@@ -211,8 +219,14 @@ func (g *Game) Network(ctx context.Context) {
 					fmt.Printf("error Unmarshaling command: %s\n", err)
 					continue
 				}
-				g.ReadQueue <- cmd
+				fmt.Printf("Command: %s\n", string(cmd.Marshal()))
 
+				select {
+				case <-ctx.Done():
+					continue
+				default:
+					g.ReadQueue <- cmd
+				}
 			}
 		}
 	}(&conn, &wg, ctx)

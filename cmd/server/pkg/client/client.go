@@ -97,7 +97,7 @@ func (c *Client) TimedOut() bool {
 
 func (c *Client) read(logger *log.Logger, ctx context.Context) error {
 	var (
-		header       []byte = make([]byte, command.HeaderSize/8)
+		header       []byte = make([]byte, command.HeaderSize)
 		buffer       []byte
 		msg          []byte
 		timeoutCount int = 0
@@ -147,12 +147,12 @@ func (c *Client) read(logger *log.Logger, ctx context.Context) error {
 				logger.Printf("Warning, did not get expected command length from client: %d, %d", n, l)
 			}
 
-			msg = make([]byte, int(l)+(int(command.HeaderSize/8)))
+			msg = make([]byte, int(l)+(int(command.HeaderSize)))
 			for i, v := range header {
 				msg[i] = v
 			}
 			for i, v := range buffer {
-				msg[i+int(int(command.HeaderSize)/8)] = v
+				msg[i+int(int(command.HeaderSize))] = v
 			}
 
 			cmd, err := command.Unmarshal(msg)
