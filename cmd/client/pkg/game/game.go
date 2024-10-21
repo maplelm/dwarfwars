@@ -155,8 +155,8 @@ func (g *Game) Network(ctx context.Context) {
 		var (
 			timeoutCount int    = 0
 			header       []byte = make([]byte, command.HeaderSize)
-			buffer       []byte = make([]byte, int(math.Pow(2, 16)))
-			msg          []byte = make([]byte, int(math.Pow(2, 16))+int(command.HeaderSize/8))
+			buffer       []byte = make([]byte, int(math.Pow(2, 32)))
+			msg          []byte = make([]byte, int(math.Pow(2, 32))+command.HeaderSize)
 		)
 		for !rl.WindowShouldClose() {
 			select {

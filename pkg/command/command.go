@@ -60,7 +60,7 @@ func Unmarshal(d []byte) (*Command, error) {
 }
 
 func ValidateHeader(header []byte) (msgSize uint32, cmd CommandType, err error) {
-	if len(header) < 4 {
+	if len(header) < HeaderSize {
 		err = fmt.Errorf("malformed header")
 		return
 	}
@@ -69,7 +69,7 @@ func ValidateHeader(header []byte) (msgSize uint32, cmd CommandType, err error) 
 		return
 	}
 
-	msgSize = uint32((uint32(header[2]) << 8) + uint32(header[3]))
+	msgSize = (uint32(header[2]) << 24) + (uint32(header[3]) << 16) + (uint32(header[4]) << 8) + (uint32(header[5]))
 	cmd = CommandType(header[1])
 
 	return
