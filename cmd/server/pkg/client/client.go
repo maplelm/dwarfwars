@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -79,7 +80,8 @@ func (c *Client) Serve(logger *log.Logger, ctx context.Context, conn *net.Conn) 
 		case e := <-err:
 			return e
 		case msg := <-c.readQueue:
-			logger.Printf(string(msg.Marshal()))
+			b, _ := json.Marshal(msg)
+			logger.Printf(string(b))
 			c.writeQueue <- msg
 		}
 	}
@@ -96,112 +98,27 @@ func (c *Client) TimedOut() bool {
 }
 
 func (c *Client) read(logger *log.Logger, ctx context.Context) error {
-	var (
-		header       []byte = make([]byte, command.HeaderSize)
-		buffer       []byte
-		msg          []byte
-		timeoutCount int = 0
-	)
+	var timeoutCount int = 0
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 
-			_, err := (*c.Connection).Read(header)
+			cmd, err := command.Recieve(*c.Connection)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return err
-				}
-				var opErr net.Error
-				if errors.As(err, &opErr) && opErr.Timeout() {
+				} else if opErr, ok := err.(net.Error); ok && opErr.Timeout() {
 					timeoutCount++
 					continue
-				}
-				if errors.Is(err, syscall.ECONNRESET) {
+				} else if errors.Is(err, syscall.ECONNRESET) {
 					return err
+				} else {
+					logger.Printf("Network Read Error: %s", err)
 				}
-			}
-			l, _, err := command.ValidateHeader(header)
-			if err != nil {
-				logger.Printf("failed to validate header: %s", err)
-				continue
-			}
-
-			buffer = make([]byte, l)
-			n, err := (*c.Connection).Read(buffer)
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return err
-				}
-				var opErr net.Error
-				if errors.As(err, &opErr) && opErr.Timeout() {
-					timeoutCount++
-					continue
-				}
-				if errors.Is(err, syscall.ECONNRESET) {
-					return err
-				}
-			}
-			if n != int(l) {
-				logger.Printf("Warning, did not get expected command length from client: %d, %d", n, l)
-			}
-
-			msg = make([]byte, int(l)+(int(command.HeaderSize)))
-			for i, v := range header {
-				msg[i] = v
-			}
-			for i, v := range buffer {
-				msg[i+int(int(command.HeaderSize))] = v
-			}
-
-			cmd, err := command.Unmarshal(msg)
-			if err != nil {
-				logger.Printf("Error Unmarshalling command: %s", err)
-				continue
 			}
 			c.readQueue <- *cmd
-
-			/*
-				msg = []byte{}
-				buflen = 0
-				for {
-					//(*c.Connection).SetReadDeadline(time.Now().Add(c.TimeoutRate)) // tor: time out rate
-					n, err := (*c.Connection).Read(buf)
-					if err != nil {
-						logger.Printf("Read Error (%s): %s", (*c.Connection).RemoteAddr(), err)
-						if errors.Is(err, io.EOF) {
-							break
-						}
-						var opErr net.Error
-						if errors.As(err, &opErr) && opErr.Timeout() {
-							/*
-								c.readmut.Lock()
-								c.readtimeouts += 1
-								c.readmut.Unlock()
-						}
-						if errors.Is(err, net.ErrClosed) {
-							return err
-						}
-						if errors.Is(err, syscall.ECONNRESET) {
-							return err
-						}
-					}
-					/*
-						c.readmut.Lock()
-						c.readtimeouts = 0
-						c.readmut.Unlock()
-					buflen += n
-					msg = append(msg, buf...)
-				}
-				msg = msg[:buflen]
-				cmd, err := command.Unmarshal(msg)
-				if err != nil {
-					logger.Printf("Failed to Unmarshal Message into a command: %s", err)
-					continue
-				}
-				c.readQueue <- *cmd
-			*/
 		}
 	}
 }
@@ -213,7 +130,7 @@ func (c *Client) write(logger *log.Logger, ctx context.Context) error {
 			return ctx.Err()
 		case cmd := <-c.writeQueue:
 			for i := 0; i < 3; i++ {
-				if _, err := (*c.Connection).Write(cmd.Marshal()); err != nil {
+				if n, err := cmd.Send((*c.Connection)); err != nil {
 					if opErr, ok := err.(*net.OpError); ok && !opErr.Temporary() {
 						logger.Printf("Connection Closed: %s", (*c.Connection).RemoteAddr())
 						return ctx.Err()
@@ -224,9 +141,10 @@ func (c *Client) write(logger *log.Logger, ctx context.Context) error {
 					} else {
 						time.Sleep(100 * time.Nanosecond)
 					}
-					continue
+				} else {
+					logger.Printf("Network Write: %d bytes", n)
+					break
 				}
-				break
 			}
 		}
 	}

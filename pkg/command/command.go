@@ -26,12 +26,12 @@ type CommandType uint8
 type CommandVersion uint8
 
 type Command struct {
-	Version  CommandVersion // 1 Byte
-	ClientID uint32         // 4 Bytes
-	Type     CommandType    // 1 Byte
-	Format   uint8          // 1 Byte
-	Size     uint32         // 4 Bytes
-	Data     []byte
+	Version  CommandVersion `json:"Version"`   // 1 Byte
+	ClientID uint32         `json:"Client ID"` // 4 Bytes
+	Type     CommandType    `json:"Type"`      // 1 Byte
+	Format   uint8          `json:"Format"`    // 1 Byte
+	Size     uint32         `json:"Size"`      // 4 Bytes
+	Data     []byte         `json:"Data"`      // Size Bytes
 }
 
 func New(id *uint32, format uint8, t CommandType, d []byte) (*Command, error) {
@@ -73,22 +73,38 @@ func (c Command) Send(conn net.Conn) (int64, error) {
 
 }
 
-func Unmarshal(d []byte) (*Command, error) {
-	s, t, id, f, e := ValidateHeader(d[:HeaderSize])
+func Recieve(conn net.Conn) (*Command, error) {
+	h := make([]byte, HeaderSize)
+	n, err := conn.Read(h)
+	if err != nil {
+		return nil, err
+	}
+	if n != HeaderSize {
+		return nil, fmt.Errorf("recieve did not get the approprate number of header bytes")
+	}
+	s, t, id, f, e := validateheader(h)
 	if e != nil {
 		return nil, e
 	}
+	d := make([]byte, s)
+	n, err = conn.Read(d)
+	if err != nil {
+		return nil, err
+	}
+	if n != int(s) {
+		return nil, fmt.Errorf("recieve did not recieve the correct number of data bytes")
+	}
 	return &Command{
-		Version:  CommandVersion(d[0]),
+		Version:  CommandVersion(h[0]),
 		ClientID: id,
 		Type:     t,
 		Format:   f,
 		Size:     s,
-		Data:     d[HeaderSize : int(s)+HeaderSize],
+		Data:     d,
 	}, nil
 }
 
-func ValidateHeader(header []byte) (msgSize uint32, cmd CommandType, id uint32, format uint8, err error) {
+func validateheader(header []byte) (msgSize uint32, cmd CommandType, id uint32, format uint8, err error) {
 	if len(header) < HeaderSize {
 		err = fmt.Errorf("malformed header")
 		return

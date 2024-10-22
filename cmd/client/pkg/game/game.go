@@ -2,10 +2,10 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -152,81 +152,26 @@ func (g *Game) Network(ctx context.Context) {
 
 	// Reading to network connection
 	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context) {
-		var (
-			timeoutCount int    = 0
-			header       []byte = make([]byte, command.HeaderSize)
-			buffer       []byte = make([]byte, int(math.Pow(2, 32)))
-			msg          []byte = make([]byte, int(math.Pow(2, 32))+command.HeaderSize)
-		)
+		var timeoutCount int = 0
 		for !rl.WindowShouldClose() {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				n, err := (*c).Read(header)
+				cmd, err := command.Recieve(*c)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return
-					}
-					var opErr net.Error
-					if errors.As(err, &opErr) && opErr.Timeout() {
+					} else if opErr, ok := err.(net.Error); ok && opErr.Timeout() {
 						timeoutCount++
 						continue
-					}
-					if errors.Is(err, syscall.ECONNRESET) {
+					} else if errors.Is(err, syscall.ECONNRESET) {
 						return
+					} else {
+						fmt.Printf("Network Read Error: %s", err)
 					}
 				}
-				fmt.Printf("Header (%d): %s\n", n, string(header))
-				l, _, err := command.ValidateHeader(header)
-				if err != nil {
-					fmt.Printf("failed to validate header: %s\n", err)
-					var e error = nil
-					for e != io.EOF {
-						_, e = (*c).Read(buffer)
-					}
-					continue
-				} else {
-					fmt.Printf("data size: %d\n", l)
-				}
-
-				n, err = (*c).Read(buffer)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						return
-					}
-					var opErr net.Error
-					if errors.As(err, &opErr) && opErr.Timeout() {
-						timeoutCount++
-						continue
-					}
-					if errors.Is(err, syscall.ECONNRESET) {
-						return
-					}
-				}
-				if n != int(l) {
-					fmt.Printf("Warning, did not get expected command length from server: %d, %d\n", n, l)
-				}
-				for i, v := range header {
-					msg[i] = v
-				}
-				for i := 0; i < int(l); i++ {
-					msg[i+int(command.HeaderSize)] = buffer[i]
-				}
-
-				cmd, err := command.Unmarshal(msg)
-				if err != nil {
-					fmt.Printf("error Unmarshaling command: %s\n", err)
-					continue
-				}
-				fmt.Printf("Command: %s\n", string(cmd.Marshal()))
-
-				select {
-				case <-ctx.Done():
-					continue
-				default:
-					g.ReadQueue <- cmd
-				}
+				g.ReadQueue <- cmd
 			}
 		}
 	}(&conn, &wg, ctx)
@@ -238,9 +183,11 @@ func (g *Game) Network(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case cmd := <-g.WriteQueue:
-				_, err := (*c).Write(cmd.Marshal())
+				n, err := cmd.Send(*c)
 				if err != nil {
-					fmt.Printf("%s\n", err)
+					fmt.Printf("Network Write Error: %s\n", err)
+				} else {
+					fmt.Printf("Network Write: %d bytes\n", n)
 				}
 			}
 		}
@@ -270,7 +217,8 @@ func (g *Game) Update() {
 	}
 
 	for _, v := range inboundcommands {
-		fmt.Printf("Incoming Command: %s\n", string(v.Marshal()))
+		b, _ := json.Marshal(v)
+		fmt.Printf("Incoming Command: %s\n", b)
 	}
 
 	if !g.Paused {

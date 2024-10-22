@@ -1,5 +1,10 @@
 package main
 
+/*
+NOTES:
+	- If Network Send channel is full the next message will lock up the program
+*/
+
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 

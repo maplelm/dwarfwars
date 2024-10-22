@@ -1,7 +1,7 @@
 [General_Settings]
 
 [Network_Settings]
-Address = "192.168.40.34"
+Address = "127.0.0.1"
 Port = 3_000
 Buffer_Size = 1_024
 

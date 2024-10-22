@@ -106,6 +106,7 @@ func main() {
 	rl.CloseWindow()
 }
 */
+/*
 
 import (
 	"github.com/gen2brain/raylib-go/raylib"
@@ -229,4 +230,41 @@ func main() {
 	}
 
 	rl.CloseWindow()
+}
+*/
+import (
+	"fmt"
+	"github.com/maplelm/dwarfwars/pkg/types"
+)
+
+func main() {
+	w, _ := types.NewWorld(6, 10, 60, 60, 100)
+	targetx := 30
+	targety := 45
+	targetz := 67
+	r := w.Chunks.SmallestRegionContains(targetx, targety, targetz)
+	fmt.Printf("Point (%d,%d,%d) contained in: %s, Bounds: X: %f-%f, Y: %f-%f, Z: %f-%f\n", targetx, targety, targetz, r.Name, r.Bounds.X, r.Bounds.X+r.Bounds.W, r.Bounds.Y, r.Bounds.Y-r.Bounds.H, r.Bounds.Z, r.Bounds.Z-r.Bounds.D)
+	/*
+	   fmt.Printf("World Size: (%d,%d,%d)\n", w.Width, w.Height, w.Depth)
+	   fmt.Printf("Depth 1, TTL) X: %f, Y: %f, Z: %f, W: %f, H: %f, D: %f\n",
+
+	   	w.Chunks.TTL.Bounds.X,
+	   	w.Chunks.TTL.Bounds.Y,
+	   	w.Chunks.TTL.Bounds.Z,
+	   	w.Chunks.TTL.Bounds.W,
+	   	w.Chunks.TTL.Bounds.Y,
+	   	w.Chunks.TTL.Bounds.D,
+
+	   )
+	   fmt.Printf("(Depth 3, TTL, TTR, BTR) X: %f, Y: %f, Z: %f, W: %f, H: %f, D: %f\n",
+
+	   	w.Chunks.TTL.TTR.BTR.Bounds.X,
+	   	w.Chunks.TTL.TTR.BTR.Bounds.Y,
+	   	w.Chunks.TTL.TTR.BTR.Bounds.Z,
+	   	w.Chunks.TTL.TTR.BTR.Bounds.W,
+	   	w.Chunks.TTL.TTR.BTR.Bounds.H,
+	   	w.Chunks.TTL.TTR.BTR.Bounds.D,
+
+	   )
+	*/
 }
