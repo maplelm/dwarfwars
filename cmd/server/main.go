@@ -17,8 +17,8 @@ import (
 
 	// Project Packages
 	s "github.com/maplelm/dwarfwars/cmd/server/pkg/server"
-	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
+	"github.com/maplelm/dwarfwars/pkg/types"
 )
 
 /*

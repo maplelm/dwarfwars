@@ -46,7 +46,7 @@ type Game struct {
 	WriteQueue  chan *command.Command
 }
 
-func New(screenx, screeny float32, title string, Scenes []Handler) *Game {
+func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], Scenes []Handler) *Game {
 	rl.InitWindow(int32(screenx), int32(screeny), title)
 	return &Game{
 		Scenes:      Scenes,
@@ -55,21 +55,28 @@ func New(screenx, screeny float32, title string, Scenes []Handler) *Game {
 			X: screenx,
 			Y: screeny,
 		},
-		Opts: cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
-			if o == nil {
-				return fmt.Errorf("Options pointer can not be nil")
+		Opts: func() *cache.Cache[types.Options] {
+
+			if opts != nil {
+				return opts
 			}
-			exepath, err := os.Executable()
-			if err != nil {
-				return err
-			}
-			fullpath := filepath.Join(filepath.Dir(exepath), "config/General.toml")
-			b, err := os.ReadFile(fullpath)
-			if err != nil {
-				return err
-			}
-			return toml.Unmarshal(b, o)
-		}),
+
+			return cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
+				if o == nil {
+					return fmt.Errorf("Options pointer can not be nil")
+				}
+				exepath, err := os.Executable()
+				if err != nil {
+					return err
+				}
+				fullpath := filepath.Join(filepath.Dir(exepath), "config/General.toml")
+				b, err := os.ReadFile(fullpath)
+				if err != nil {
+					return err
+				}
+				return toml.Unmarshal(b, o)
+			})
+		}(),
 		ReadQueue:  make(chan *command.Command, 100),
 		WriteQueue: make(chan *command.Command, 100),
 	}

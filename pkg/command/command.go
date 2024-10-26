@@ -25,6 +25,17 @@ const HeaderSize int = 11 // bytes
 type CommandType uint8
 type CommandVersion uint8
 
+const (
+	CommandWorldData = iota
+	CommandWorldUpdate
+)
+
+const (
+	FormatJSON = iota
+	FormatGLOB
+	FormatCSV
+)
+
 type Command struct {
 	Version  CommandVersion `json:"Version"`   // 1 Byte
 	ClientID uint32         `json:"Client ID"` // 4 Bytes
@@ -34,22 +45,17 @@ type Command struct {
 	Data     []byte         `json:"Data"`      // Size Bytes
 }
 
-func New(id *uint32, format uint8, t CommandType, d []byte) (*Command, error) {
+func New(id uint32, format uint8, t CommandType, d []byte) (*Command, error) {
 	if len(d) > int(math.Pow(2, 32)) {
 		return nil, fmt.Errorf("command exceeds data limit")
 	}
 	return &Command{
-		Version: CurrentVersion,
-		ClientID: func() uint32 {
-			if id == nil {
-				return 0
-			}
-			return *id
-		}(),
-		Type:   t,
-		Format: format,
-		Size:   uint32(len(d)),
-		Data:   d,
+		Version:  CurrentVersion,
+		ClientID: id,
+		Type:     t,
+		Format:   format,
+		Size:     uint32(len(d)),
+		Data:     d,
 	}, nil
 }
 

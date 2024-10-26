@@ -8,9 +8,6 @@ type Chunk struct {
 	Tiles []Tile
 }
 
-type Entity interface {
-}
-
 type Tile struct {
 	Type     TileType
 	Contains []Entity
