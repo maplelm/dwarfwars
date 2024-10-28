@@ -51,41 +51,38 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 	defer close()
 
 	// Start a new thread that manages the incoming connections
-	go s.connMgr(logger, serverCtx)
-	// listen for incoming connections
-	go s.listen(logger)
+	go s.clients.MonitorIncomingConnections(serverCtx, logger)
+	go s.clients.DispatchIncomingCommands(serverCtx, logger)
 
-	////////////////////////////////////////
-	// Blocking until Server context ends //
-	////////////////////////////////////////
-	select {
-	case <-ctx.Done():
-		// stop if the application context is closed
-		return ctx.Err()
-	case <-s.quit:
-		// stop if the quit funciton is called from anywhere else in the application
-		return nil
+	/////////////////////////////////////
+	// Listen For Incoming Connections //
+	/////////////////////////////////////
+ListenLoop:
+	for {
+		select {
+		case <-serverCtx.Done():
+			break ListenLoop
+		case <-s.quit:
+			break ListenLoop
+		default:
+			if conn, err := s.Listener.AcceptTCP(); err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					logger.Printf("Listener Close: %s", err)
+					break ListenLoop
+				}
+				var netErr *net.OpError
+				if errors.As(err, &netErr) && netErr.Timeout() {
+				} else {
+					logger.Printf("Listner Failed to Accept Incoming Connection: %s", err)
+				}
+			} else {
+				s.clients.IncomingConnections <- conn
+			}
+		}
 	}
+	return serverCtx.Err()
 }
 
 func (s *Server) Stop() {
 	s.quit <- struct{}{}
-}
-
-func (s *Server) listen(logger *log.Logger) error {
-	for {
-		if conn, err := s.Listener.AcceptTCP(); err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				logger.Printf("Listener Close: %s", err)
-				return err
-			}
-			var netErr *net.OpError
-			if errors.As(err, &netErr) && netErr.Timeout() {
-			} else {
-				logger.Printf("Listner Failed to Accept Incoming Connection: %s", err)
-			}
-		} else {
-			s.CC <- conn
-		}
-	}
 }

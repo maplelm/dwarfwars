@@ -7,18 +7,12 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
 	"sync"
-	"time"
-
-	// 3rd Party Packages
-	"github.com/BurntSushi/toml"
 
 	// Project Packages
 	s "github.com/maplelm/dwarfwars/cmd/server/pkg/server"
+	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
-	"github.com/maplelm/dwarfwars/pkg/types"
 )
 
 /*
@@ -35,103 +29,39 @@ var (
  * Program Entry Point
  */
 func main() {
-	// Getting command line arguments
-	flag.Parse()
-
-	/*
-	 * Variables
-	 */
 	var (
 		err       error
-		waitgroup *sync.WaitGroup             = new(sync.WaitGroup)
-		opts      *cache.Cache[types.Options] = cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
-			if o == nil {
-				return fmt.Errorf("Options pointer can not be nil")
-			}
-			fullpath := filepath.Join(*configPath, "General.toml")
-			b, err := os.ReadFile(fullpath)
-			if err != nil {
-				return err
-			}
-			return toml.Unmarshal(b, o)
-		})
+		waitgroup *sync.WaitGroup = new(sync.WaitGroup)
 	)
 
-	/*
-	 * Configuring Logging
-	 */
-	logflags := 0
-	if opts.MustGet().Logging.Flags.UTC {
-		logflags = logflags | log.LUTC
-	}
-	if opts.MustGet().Logging.Flags.Date {
-		logflags = logflags | log.Ldate
-	}
-	if opts.MustGet().Logging.Flags.Time {
-		logflags = logflags | log.Ltime
-	}
-	if opts.MustGet().Logging.Flags.Longfile {
-		logflags = logflags | log.Llongfile
-	}
-	if opts.MustGet().Logging.Flags.Msgprefix {
-		logflags = logflags | log.Lmsgprefix
-	}
-	if opts.MustGet().Logging.Flags.Shortfile {
-		logflags = logflags | log.Lshortfile
-	}
-	if opts.MustGet().Logging.Flags.Microseconds {
-		logflags = logflags | log.Lmicroseconds
-	}
-	MainLogger := log.New(os.Stdout, opts.MustGet().Logging.Prefix, logflags)
+	flag.Parse()
 
-	/*
-	 * Validating the SQL Database
-	 */
+	opts := InitOptionsCache()
+
+	MainLogger := InitLogger(opts)
+
 	MainLogger.Println("Validating Database Before Server Bootup")
 	if err = ValidateSQL(3, 500, MainLogger, opts); err != nil {
 		MainLogger.Fatalf("Failed to Validate SQL Server: %s", err)
 	}
 
-	// Creating the main application context.
 	ctx, close := context.WithCancel(context.Background())
 
 	// Start the server based on what value the headless flag has
 	switch *headless {
 	case true:
 		MainLogger.Println("Server Mode: Headless")
-		go CliMode(MainLogger, ctx, waitgroup, opts)
-		for {
-			fmt.Printf("Dwarf Wars Server: ")
-			var line string
-			_, err := fmt.Scanln(&line)
-			if err != nil {
-				MainLogger.Printf("Failed to Read user input: %s", err)
-			}
-			switch line {
-			case "stop", "quit":
-				close()
-				waitgroup.Wait()
-				return
-			case "ls":
-				// list Connections
-			case "count":
-				//fmt.Printf("Connections: %d\n", len(server.Connections))
-			default:
-				fmt.Printf("Invalid input (%s)\n", line)
-			}
-		}
+		CliMode(MainLogger, ctx, waitgroup, opts)
 	case false:
 		MainLogger.Println("Server Mode: Interactive")
 		TuiMode(MainLogger, ctx, waitgroup, opts)
-		close()
-		waitgroup.Wait()
-		return
 	}
 
-}
-
-func TuiMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
-	return nil
+	// Clean up
+	MainLogger.Println("Server Shutting down...")
+	close()
+	waitgroup.Wait()
+	return
 }
 
 func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
@@ -140,12 +70,7 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 		addr *net.TCPAddr
 	)
 
-	/*
-	 *	Adding CliMode to the sync group.
-	 *	This should allow for proper shutdowns.
-	 */
-	wgrp.Add(1)
-	defer wgrp.Done()
+	cliCtx, close := context.WithCancel(ctx)
 
 	/*
 	*	Resolving TCP Address for the Server to use.
@@ -154,6 +79,7 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 	logger.Printf("Resolving TCP Address: %s:%d", opts.MustGet().Game.Addr, opts.MustGet().Game.Port)
 	if addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", opts.MustGet().Game.Addr, opts.MustGet().Game.Port)); err != nil {
 		logger.Printf("Failed to Resolve TCP Address for server: %s", err)
+		close()
 		return err
 	} else {
 		logger.Printf("Resolved Server Address: %s", addr.String())
@@ -162,9 +88,39 @@ func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts
 	server, err = s.New(addr, 10)
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
+		close()
 		return err
 	}
 
+	// Running the user interface thread for the server...
+	go func() error {
+		wgrp.Add(1)
+		defer wgrp.Done()
+		for {
+			fmt.Printf("Dwarf Wars Server: ")
+			var line string
+			_, err := fmt.Scanln(&line)
+			if err != nil {
+				logger.Printf("Failed to Read user input: %s", err)
+			}
+			switch line {
+			case "stop", "quit":
+				close()
+				return nil
+			case "ls":
+				// list Connections
+			case "count":
+				//fmt.Printf("Connections: %d\n", len(server.Connections))
+			default:
+				fmt.Printf("Invalid input (%s)\n", line)
+			}
+		}
+	}()
+
 	logger.Printf("Starting Dwarf Wars Server...")
-	return server.Start(opts, logger, nil, ctx)
+	return server.Start(opts, logger, nil, cliCtx)
+}
+
+func TuiMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
+	return nil
 }
