@@ -155,6 +155,12 @@ func (g *Game) Network(ctx context.Context) {
 		panic(fmt.Errorf("failed to connect to server at %s:%d | %s", opts.Network.Addr, opts.Network.Port, err))
 	}
 
+	// Getting ID from server
+	cmd, err := command.Recieve(conn)
+	if err != nil {
+		panic(fmt.Errorf("failed to get a client id from server"))
+	}
+	id := cmd.ClientID
 	g.connected = true
 
 	// Reading to network connection
@@ -190,6 +196,8 @@ func (g *Game) Network(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case cmd := <-g.WriteQueue:
+				cmd.ClientID = id
+				fmt.Printf("Sending data to server (%d), %s", cmd.ClientID, string(cmd.Data))
 				n, err := cmd.Send(*c)
 				if err != nil {
 					fmt.Printf("Network Write Error: %s\n", err)

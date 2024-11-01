@@ -74,8 +74,7 @@ func (tl *testlevel) UserInput(g *game.Game) error {
 		tl.Camera.Target = rl.Vector2Add(tl.Camera.Target, rl.Vector2{X: -10, Y: 0})
 	}
 	if !g.Paused && rl.IsKeyPressed(rl.KeyS) {
-		id := new(uint32)
-		*id = 0
+		id := uint32(0)
 		cmd, _ := command.New(id, 0, command.CommandType(1), []byte("Sent from client"))
 		g.WriteQueue <- cmd
 		fmt.Println("Command Queued")

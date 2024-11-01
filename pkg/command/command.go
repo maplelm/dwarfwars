@@ -26,7 +26,8 @@ type CommandType uint8
 type CommandVersion uint8
 
 const (
-	CommandWorldData = iota
+	CommandWelcome = iota
+	CommandWorldData
 	CommandWorldUpdate
 )
 
@@ -34,6 +35,7 @@ const (
 	FormatJSON = iota
 	FormatGLOB
 	FormatCSV
+	FormatText
 )
 
 type Command struct {
