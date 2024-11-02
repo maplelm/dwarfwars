@@ -2,10 +2,10 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -46,7 +46,7 @@ type Game struct {
 	WriteQueue  chan *command.Command
 }
 
-func New(screenx, screeny float32, title string, Scenes []Handler) *Game {
+func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], Scenes []Handler) *Game {
 	rl.InitWindow(int32(screenx), int32(screeny), title)
 	return &Game{
 		Scenes:      Scenes,
@@ -55,21 +55,28 @@ func New(screenx, screeny float32, title string, Scenes []Handler) *Game {
 			X: screenx,
 			Y: screeny,
 		},
-		Opts: cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
-			if o == nil {
-				return fmt.Errorf("Options pointer can not be nil")
+		Opts: func() *cache.Cache[types.Options] {
+
+			if opts != nil {
+				return opts
 			}
-			exepath, err := os.Executable()
-			if err != nil {
-				return err
-			}
-			fullpath := filepath.Join(filepath.Dir(exepath), "config/General.toml")
-			b, err := os.ReadFile(fullpath)
-			if err != nil {
-				return err
-			}
-			return toml.Unmarshal(b, o)
-		}),
+
+			return cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
+				if o == nil {
+					return fmt.Errorf("Options pointer can not be nil")
+				}
+				exepath, err := os.Executable()
+				if err != nil {
+					return err
+				}
+				fullpath := filepath.Join(filepath.Dir(exepath), "config/General.toml")
+				b, err := os.ReadFile(fullpath)
+				if err != nil {
+					return err
+				}
+				return toml.Unmarshal(b, o)
+			})
+		}(),
 		ReadQueue:  make(chan *command.Command, 100),
 		WriteQueue: make(chan *command.Command, 100),
 	}
@@ -148,85 +155,36 @@ func (g *Game) Network(ctx context.Context) {
 		panic(fmt.Errorf("failed to connect to server at %s:%d | %s", opts.Network.Addr, opts.Network.Port, err))
 	}
 
+	// Getting ID from server
+	cmd, err := command.Recieve(conn)
+	if err != nil {
+		panic(fmt.Errorf("failed to get a client id from server"))
+	}
+	id := cmd.ClientID
 	g.connected = true
 
 	// Reading to network connection
 	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context) {
-		var (
-			timeoutCount int    = 0
-			header       []byte = make([]byte, command.HeaderSize)
-			buffer       []byte = make([]byte, int(math.Pow(2, 32)))
-			msg          []byte = make([]byte, int(math.Pow(2, 32))+command.HeaderSize)
-		)
+		var timeoutCount int = 0
 		for !rl.WindowShouldClose() {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				n, err := (*c).Read(header)
+				cmd, err := command.Recieve(*c)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return
-					}
-					var opErr net.Error
-					if errors.As(err, &opErr) && opErr.Timeout() {
+					} else if opErr, ok := err.(net.Error); ok && opErr.Timeout() {
 						timeoutCount++
 						continue
-					}
-					if errors.Is(err, syscall.ECONNRESET) {
+					} else if errors.Is(err, syscall.ECONNRESET) {
 						return
+					} else {
+						fmt.Printf("Network Read Error: %s", err)
 					}
 				}
-				fmt.Printf("Header (%d): %s\n", n, string(header))
-				l, _, err := command.ValidateHeader(header)
-				if err != nil {
-					fmt.Printf("failed to validate header: %s\n", err)
-					var e error = nil
-					for e != io.EOF {
-						_, e = (*c).Read(buffer)
-					}
-					continue
-				} else {
-					fmt.Printf("data size: %d\n", l)
-				}
-
-				n, err = (*c).Read(buffer)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						return
-					}
-					var opErr net.Error
-					if errors.As(err, &opErr) && opErr.Timeout() {
-						timeoutCount++
-						continue
-					}
-					if errors.Is(err, syscall.ECONNRESET) {
-						return
-					}
-				}
-				if n != int(l) {
-					fmt.Printf("Warning, did not get expected command length from server: %d, %d\n", n, l)
-				}
-				for i, v := range header {
-					msg[i] = v
-				}
-				for i := 0; i < int(l); i++ {
-					msg[i+int(command.HeaderSize)] = buffer[i]
-				}
-
-				cmd, err := command.Unmarshal(msg)
-				if err != nil {
-					fmt.Printf("error Unmarshaling command: %s\n", err)
-					continue
-				}
-				fmt.Printf("Command: %s\n", string(cmd.Marshal()))
-
-				select {
-				case <-ctx.Done():
-					continue
-				default:
-					g.ReadQueue <- cmd
-				}
+				g.ReadQueue <- cmd
 			}
 		}
 	}(&conn, &wg, ctx)
@@ -238,9 +196,13 @@ func (g *Game) Network(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case cmd := <-g.WriteQueue:
-				_, err := (*c).Write(cmd.Marshal())
+				cmd.ClientID = id
+				fmt.Printf("Sending data to server (%d), %s", cmd.ClientID, string(cmd.Data))
+				n, err := cmd.Send(*c)
 				if err != nil {
-					fmt.Printf("%s\n", err)
+					fmt.Printf("Network Write Error: %s\n", err)
+				} else {
+					fmt.Printf("Network Write: %d bytes\n", n)
 				}
 			}
 		}
@@ -270,7 +232,8 @@ func (g *Game) Update() {
 	}
 
 	for _, v := range inboundcommands {
-		fmt.Printf("Incoming Command: %s\n", string(v.Marshal()))
+		b, _ := json.Marshal(v)
+		fmt.Printf("Incoming Command: %s\n", b)
 	}
 
 	if !g.Paused {

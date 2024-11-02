@@ -8,163 +8,113 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
-	"time"
-
-	// 3rd Party Packages
-	"github.com/BurntSushi/toml"
 
 	// Project Packages
-	s "github.com/maplelm/dwarfwars/cmd/server/pkg/server"
+	"github.com/maplelm/dwarfwars/cmd/server/pkg/server"
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 )
 
-/*
- * Flags
- */
+// CLI Flags
 var (
 	configPath *string = flag.String("c", "./config/", "location of settings files")
-	//savepath   *string = flag.String("w", "./saves/World/", "location of world/game data")
-	headless *bool = flag.Bool("h", false, "server will not use a tui and can be automated with scripts")
-	server   *s.Server
+	headless   *bool   = flag.Bool("h", false, "server will not use a tui and can be automated with scripts")
 )
 
-/*
- * Program Entry Point
- */
+// Main Function
 func main() {
-	// Getting command line arguments
+	// Parse CLI Flags
 	flag.Parse()
 
-	/*
-	 * Variables
-	 */
-	var (
-		err       error
-		waitgroup *sync.WaitGroup             = new(sync.WaitGroup)
-		opts      *cache.Cache[types.Options] = cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
-			if o == nil {
-				return fmt.Errorf("Options pointer can not be nil")
-			}
-			fullpath := filepath.Join(*configPath, "General.toml")
-			b, err := os.ReadFile(fullpath)
-			if err != nil {
-				return err
-			}
-			return toml.Unmarshal(b, o)
-		})
-	)
+	// Getting Settings from TOML file
+	opts := InitOptionsCache()
 
-	/*
-	 * Configuring Logging
-	 */
-	logflags := 0
-	if opts.MustGet().Logging.Flags.UTC {
-		logflags = logflags | log.LUTC
-	}
-	if opts.MustGet().Logging.Flags.Date {
-		logflags = logflags | log.Ldate
-	}
-	if opts.MustGet().Logging.Flags.Time {
-		logflags = logflags | log.Ltime
-	}
-	if opts.MustGet().Logging.Flags.Longfile {
-		logflags = logflags | log.Llongfile
-	}
-	if opts.MustGet().Logging.Flags.Msgprefix {
-		logflags = logflags | log.Lmsgprefix
-	}
-	if opts.MustGet().Logging.Flags.Shortfile {
-		logflags = logflags | log.Lshortfile
-	}
-	if opts.MustGet().Logging.Flags.Microseconds {
-		logflags = logflags | log.Lmicroseconds
-	}
-	MainLogger := log.New(os.Stdout, opts.MustGet().Logging.Prefix, logflags)
+	// Initializing the Logger object
+	MainLogger := InitLogger(opts)
 
-	/*
-	 * Validating the SQL Database
-	 */
+	// Validating the SQL Server
 	MainLogger.Println("Validating Database Before Server Bootup")
-	if err = ValidateSQL(3, 500, MainLogger, opts); err != nil {
+	if err := ValidateSQL(3, 500, MainLogger, opts); err != nil {
 		MainLogger.Fatalf("Failed to Validate SQL Server: %s", err)
 	}
 
-	// Creating the main application context.
-	ctx, close := context.WithCancel(context.Background())
-
-	// Start the server based on what value the headless flag has
+	// Start Server
 	switch *headless {
 	case true:
-		MainLogger.Println("Server Mode: Headless")
-		go CliMode(MainLogger, ctx, waitgroup, opts)
-		for {
-			fmt.Printf("Dwarf Wars Server: ")
-			var line string
-			_, err := fmt.Scanln(&line)
-			if err != nil {
-				MainLogger.Printf("Failed to Read user input: %s", err)
-			}
-			switch line {
-			case "stop", "quit":
-				close()
-				waitgroup.Wait()
-				return
-			case "ls":
-				// list Connections
-			case "count":
-				//fmt.Printf("Connections: %d\n", len(server.Connections))
-			default:
-				fmt.Printf("Invalid input (%s)\n", line)
-			}
+		if err := CliMode(MainLogger, opts); err != nil {
+			MainLogger.Fatalf("Server Error: %s", err)
 		}
 	case false:
-		MainLogger.Println("Server Mode: Interactive")
-		TuiMode(MainLogger, ctx, waitgroup, opts)
-		close()
-		waitgroup.Wait()
-		return
+		if err := TuiMode(MainLogger, opts); err != nil {
+			MainLogger.Fatalf("Server Error: %s", err)
+		}
 	}
-
 }
 
-func TuiMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
-	return nil
-}
-
-func CliMode(logger *log.Logger, ctx context.Context, wgrp *sync.WaitGroup, opts *cache.Cache[types.Options]) error {
+func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 	var (
-		err  error
-		addr *net.TCPAddr
+		err    error
+		addr   *net.TCPAddr
+		wgrp   *sync.WaitGroup = new(sync.WaitGroup)
+		s      *server.Server
+		clistd *log.Logger = log.New(os.Stdout, "Dwarf Wars Server: ", 0)
+		clierr *log.Logger = log.New(os.Stderr, "Error: ", 0)
+		input  *string     = new(string)
 	)
 
-	/*
-	 *	Adding CliMode to the sync group.
-	 *	This should allow for proper shutdowns.
-	 */
-	wgrp.Add(1)
-	defer wgrp.Done()
+	logger.Println("Server Mode: Headless")
 
-	/*
-	*	Resolving TCP Address for the Server to use.
-	*	Required, will shut the server down if failed.
-	 */
+	// Creating Server Context
+	cliCtx, close := context.WithCancel(context.Background())
+
+	// Resolving Server Listening Address
 	logger.Printf("Resolving TCP Address: %s:%d", opts.MustGet().Game.Addr, opts.MustGet().Game.Port)
 	if addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", opts.MustGet().Game.Addr, opts.MustGet().Game.Port)); err != nil {
 		logger.Printf("Failed to Resolve TCP Address for server: %s", err)
+		close()
 		return err
 	} else {
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	server, err = s.New(addr, 10)
+	s, err = server.New(addr, 10)
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
+		close()
 		return err
 	}
 
+	// Defers
+	defer wgrp.Wait()
+	defer close()
+
+	// Starting Game Server
 	logger.Printf("Starting Dwarf Wars Server...")
-	return server.Start(opts, logger, nil, ctx)
+	go s.Start(opts, logger, wgrp, cliCtx)
+
+	// Listening for commands from CLI
+	for {
+		clistd.Printf("(Input)")
+		if _, err := fmt.Scanln(input); err != nil {
+			clierr.Printf("Failed to Read user input: %s", err)
+		} else {
+			switch *input {
+			case "stop", "quit":
+				clistd.Printf("Shutting Down")
+				return nil
+			case "ls":
+				// list Connections
+			case "count":
+				//fmt.Printf("Connections: %d\n", len(server.Connections))
+			default:
+				clierr.Printf("Invalid input (%s)\n", *input)
+			}
+		}
+	}
+}
+
+func TuiMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
+	logger.Println("Server Mode: Interactive")
+	return nil
 }

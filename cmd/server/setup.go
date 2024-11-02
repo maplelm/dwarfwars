@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	// 3rd Party
+	"github.com/BurntSushi/toml"
+
 	// Project Packages
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
@@ -98,4 +101,46 @@ func ValidateSQL(maxAttempts, timeoutRate int, logger *log.Logger, opts *cache.C
 
 	}
 	return nil
+}
+
+func InitLogger(opts *cache.Cache[types.Options]) *log.Logger { /*
+	 * Configuring Logging
+	 */
+	logflags := 0
+	if opts.MustGet().Logging.Flags.UTC {
+		logflags = logflags | log.LUTC
+	}
+	if opts.MustGet().Logging.Flags.Date {
+		logflags = logflags | log.Ldate
+	}
+	if opts.MustGet().Logging.Flags.Time {
+		logflags = logflags | log.Ltime
+	}
+	if opts.MustGet().Logging.Flags.Longfile {
+		logflags = logflags | log.Llongfile
+	}
+	if opts.MustGet().Logging.Flags.Msgprefix {
+		logflags = logflags | log.Lmsgprefix
+	}
+	if opts.MustGet().Logging.Flags.Shortfile {
+		logflags = logflags | log.Lshortfile
+	}
+	if opts.MustGet().Logging.Flags.Microseconds {
+		logflags = logflags | log.Lmicroseconds
+	}
+	return log.New(os.Stdout, opts.MustGet().Logging.Prefix, logflags)
+}
+
+func InitOptionsCache() *cache.Cache[types.Options] {
+	return cache.New(time.Duration(5)*time.Second, func(o *types.Options) error {
+		if o == nil {
+			return fmt.Errorf("Options pointer can not be nil")
+		}
+		fullpath := filepath.Join(*configPath, "General.toml")
+		b, err := os.ReadFile(fullpath)
+		if err != nil {
+			return err
+		}
+		return toml.Unmarshal(b, o)
+	})
 }

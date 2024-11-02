@@ -3,10 +3,8 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 
@@ -14,7 +12,6 @@ import (
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
-	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
 type Server struct {
@@ -44,21 +41,16 @@ func New(addr *net.TCPAddr, chanSize int) (*Server, error) {
 }
 
 func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgrp *sync.WaitGroup, ctx context.Context) (string, error) {
-	var (
-		conn   net.Conn
-		err    error
-		client *client.Client
-	)
-
-	// If passed a waitgroup add to the waitgroup
-	if wgrp == nil {
-		wgrp = new(sync.WaitGroup)
+	if wgrp != nil {
+		wgrp.Add(1)
+		defer wgrp.Done()
 	}
 
 	// Defers
 	defer s.Listener.Close()
 
 	// Start a new thread that manages the incoming connections
+	go s.clients.MonitorIncomingConnections(ctx, logger)
 	go s.clients.DispatchIncomingCommands(ctx, logger)
 
 	/////////////////////////////////////
@@ -67,28 +59,23 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 	for {
 		select {
 		case <-ctx.Done():
-			return "Context Closed", ctx.Err()
+			return ctx.Err()
 		case <-s.quit:
-			return "Quit Channel Called", ctx.Err()
+			return ctx.Err()
 		default:
-			if conn, err = s.Listener.AcceptTCP(); err != nil {
+			if conn, err := s.Listener.AcceptTCP(); err != nil {
 				if errors.Is(err, net.ErrClosed) {
-					return fmt.Sprintf("Listener Closed, %s", err), ctx.Err()
+					logger.Printf("Listener Close: %s", err)
+					return ctx.Err()
 				}
-				if e, ok := err.(net.Error); ok && e.Timeout() {
-					continue
+				var netErr *net.OpError
+				if errors.As(err, &netErr) && netErr.Timeout() {
+				} else {
+					logger.Printf("Listner Failed to Accept Incoming Connection: %s", err)
 				}
-				logger.Printf("Listner Failed to Accept Incoming Connection: %s", err)
-				continue
+			} else {
+				s.clients.IncomingConnections <- conn
 			}
-
-			if client, err = s.clients.Connect(conn); err != nil {
-				logger.Printf("Failed to Connect with Client: %s", err)
-			}
-
-			go s.clients.Monitor(ctx, client, logger, wgrp)
-			cmd, _ := command.New(client.GetID(), command.FormatText, command.CommandWelcome, []byte(strconv.Itoa(int(client.GetID()))))
-			cmd.Send(client.Connection)
 		}
 	}
 }
