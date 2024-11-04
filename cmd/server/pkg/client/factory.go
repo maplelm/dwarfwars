@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -32,7 +34,7 @@ func NewFactory(idsize, buffsize int, tor time.Duration) *Factory {
 		BufferSize:       buffsize,
 		TimeoutRate:      tor,
 		IncomingCommands: make(chan command.Command, 100),
-		unusedIds:        make([]uint32, 10),
+		unusedIds:        make([]uint32, 0),
 		activeClients:    make(map[uint32]*Client),
 	}
 }
@@ -78,18 +80,21 @@ func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logg
 	}
 }
 
-func (f *Factory) Connect(c net.Conn) (*Client, error) {
+func (f *Factory) Connect(c net.Conn, logger *log.Logger) (*Client, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
 	var id uint32
 
 	if len(f.unusedIds) > 0 {
+		logger.Printf("reusing id %d", f.unusedIds[0])
 		id = f.unusedIds[0]
 		f.unusedIds = f.unusedIds[1:]
 	} else {
-		id = f.nextId
-		f.nextId++
+		var bytes []byte = make([]byte, 4)
+		rand.Read(bytes)
+		id = binary.LittleEndian.Uint32(bytes)
+		logger.Printf("new id %d", id)
 	}
 
 	cli := New(c, f.TimeoutRate, 100, id, f.BufferSize, f.IncomingCommands)
@@ -106,6 +111,7 @@ func (f *Factory) Disconnect(id uint32) error {
 	} else {
 		c.Disconect()
 		delete(f.activeClients, id)
+		f.unusedIds = append(f.unusedIds, id)
 		return nil
 	}
 }

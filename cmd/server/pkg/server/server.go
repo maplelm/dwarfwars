@@ -82,7 +82,7 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 				continue
 			}
 
-			if client, err = s.clients.Connect(conn); err != nil {
+			if client, err = s.clients.Connect(conn, logger); err != nil {
 				logger.Printf("Failed to Connect with Client: %s", err)
 			}
 
@@ -95,4 +95,8 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 
 func (s *Server) Stop() {
 	s.quit <- struct{}{}
+}
+
+func (s *Server) Clients() []uint32 {
+	return s.clients.Keys()
 }

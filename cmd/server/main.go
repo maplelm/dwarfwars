@@ -104,6 +104,10 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 				clistd.Printf("Shutting Down")
 				return nil
 			case "ls":
+				clistd.Printf("clients: %d", len(s.Clients()))
+				for _, v := range s.Clients() {
+					clistd.Printf("\t%d", v)
+				}
 				// list Connections
 			case "count":
 				//fmt.Printf("Connections: %d\n", len(server.Connections))
