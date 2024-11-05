@@ -20,26 +20,25 @@ import (
 type Server struct {
 	Addr     *net.TCPAddr
 	Listener *net.TCPListener
-	CC       chan net.Conn // connection channel
 
-	clientmutex sync.Mutex
+	clientmutex *sync.Mutex
 	clients     *client.Factory
 
-	ActiveGames []*game.Game
+	ActiveGames []types.Lobby
 
 	quit chan struct{}
 }
 
-func New(addr *net.TCPAddr, chanSize int) (*Server, error) {
+func New(addr *net.TCPAddr) (*Server, error) {
 	l, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
-		Addr:     addr,
-		Listener: l,
-		CC:       make(chan net.Conn, chanSize),
-		clients:  client.NewFactory(255, 1024, time.Duration(5)*time.Second),
+		Addr:        addr,
+		Listener:    l,
+		clientmutex: new(sync.Mutex),
+		clients:     client.NewFactory(255, 1024, time.Duration(5)*time.Second),
 	}, nil
 }
 

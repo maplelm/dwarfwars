@@ -1,27 +1,22 @@
 package engine
 
-type EntityHandler interface {
-	ID() int
-	Health() float32
-	Passable() bool
-	OnDeath()
-}
+import "github.com/maplelm/dwarfwars/pkg/command"
 
-const (
-	TileTypeDirt = iota
-	TileTypeAir
-	TileTypeGrass
-	TileTypeSand
-	TileTypeWater
-)
-
-type Tile struct {
-	Entities []EntityHandler
-	TileType int
-}
-
+/*
+This struct will contain all of the relevent data to a single Game world instance
+*/
 type World struct {
-	Tiles []Tile
+	Tiles           []Tile
+	CmdQueue        chan *command.Command
+	updateCmdBuffer []*command.Command
+}
+
+func NewWorld(qs int) *World {
+	return &World{
+		Tiles:           nil,
+		CmdQueue:        make(chan *command.Command, qs),
+		updateCmdBuffer: make([]*command.Command, qs),
+	}
 }
 
 func WorldGen(x, y, z, seed int) *World {
@@ -39,4 +34,12 @@ func WorldGen(x, y, z, seed int) *World {
 	}
 
 	return w
+}
+
+func (w *World) Update() {
+	s := len(w.CmdQueue) // number of commands to process this update
+	for i := 0; i < len(w.CmdQueue); i++ {
+		w.updateCmdBuffer[i] = <-w.CmdQueue // pulling the commands from channel
+	}
+	// update the world
 }

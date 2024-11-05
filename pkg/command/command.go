@@ -27,9 +27,13 @@ type CommandType uint8
 type CommandVersion uint8
 
 const (
-	CommandWelcome = iota
-	CommandWorldData
-	CommandWorldUpdate
+	TypeWelcome = iota
+	TypeLobbyJoinRequest
+	TypeLobbyLeaveRequest
+	TypeInput
+	TypeStartGame
+	TypeWorldDaa
+	TypeWorldUpdate
 )
 
 const (

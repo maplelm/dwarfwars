@@ -70,6 +70,17 @@ func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logg
 				}
 				continue
 			}
+
+			switch cmd.Type {
+			case command.TypeWelcome:
+			case command.TypeLobbyJoinRequest:
+			case command.TypeLobbyLeaveRequest:
+			case command.TypeWorldData, command.TypeWorldUpdate:
+				// Error State, Client should be passed to a Game Instance Rather then the Dispatcher by the time these messages are being Send
+			default:
+				// Unhandled Command
+			}
+
 			response, err := command.New(client.id, 0, command.CommandType(0), []byte("command received"))
 			if err != nil {
 				logger.Printf("Error (%d): %s", client.id, err)
