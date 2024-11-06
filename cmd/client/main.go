@@ -34,7 +34,7 @@ func main() {
 		}
 		return toml.Unmarshal(b, o)
 	})
-	g := game.New(opts.MustGet().General.ScreenWidth, opts.MustGet().General.ScreenHeight, "Dwarf Wars", opts, []game.Handler{&testlevel{}, &testlevel2{}})
+	g := game.New(opts.MustGet().General.ScreenWidth, opts.MustGet().General.ScreenHeight, "Dwarf Wars", opts, []game.Handler{&MainMenu{}})
 	rl.SetTargetFPS(60)
 	if opts.MustGet().General.Fullscreen {
 		rl.ToggleFullscreen()

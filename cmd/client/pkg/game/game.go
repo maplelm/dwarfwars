@@ -44,6 +44,9 @@ type Game struct {
 	connected   bool
 	ReadQueue   chan *command.Command
 	WriteQueue  chan *command.Command
+
+	Ctx      context.Context
+	ctxClose func()
 }
 
 func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], Scenes []Handler) *Game {
@@ -98,13 +101,11 @@ func (g *Game) SetScene(index int) error {
 }
 
 func (g *Game) Run() {
-	ctx, ctxclose := context.WithCancel(context.Background())
+	g.Ctx, g.ctxClose = context.WithCancel(context.Background())
 
-	defer rl.CloseWindow()
-	defer close(g.ReadQueue)
-	defer close(g.WriteQueue)
 	defer g.networkWait.Wait()
-	defer ctxclose()
+	defer rl.CloseWindow()
+	defer g.ctxClose()
 
 	if !g.Scenes[g.activeScene].IsInitialized() {
 		err := g.Scenes[g.activeScene].Init(g)
@@ -112,12 +113,12 @@ func (g *Game) Run() {
 			fmt.Printf("Warning Error Initializing Scene (%d): %s\n", g.activeScene, err)
 		}
 	}
-	go g.Network(ctx)
 	for !rl.WindowShouldClose() {
 		g.UserInput() // Pause State Agnostic
 		g.Update()    // will not work while game is paused
 		g.Draw()
 	}
+
 }
 func (g *Game) UserInput() {
 
@@ -133,9 +134,12 @@ func (g *Game) UserInput() {
 	}
 }
 
-func (g *Game) Network(ctx context.Context) {
+func (g *Game) Network(ctx context.Context, addr string, port int) error {
 	g.networkWait.Add(1)
 	defer g.networkWait.Done()
+
+	rerrchan := make(chan error)
+	werrchan := make(chan error)
 
 	var (
 		conn net.Conn
@@ -143,28 +147,38 @@ func (g *Game) Network(ctx context.Context) {
 		wg   sync.WaitGroup
 	)
 
-	opts, err := g.Opts.Get()
+	conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
-		conn, err = net.Dial("tcp", "127.0.0.1:3000")
-		if err != nil {
-			panic(fmt.Errorf("failed to connect to server at %s:%d | %s", opts.Network.Addr, opts.Network.Port, err))
-		}
+		return err
 	}
-	conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", opts.Network.Addr, opts.Network.Port))
+	defer conn.Close()
+
+	cmd, _ := command.New(0, command.FormatText, command.TypeWelcome, []byte{})
+	_, err = cmd.Send(conn)
 	if err != nil {
-		panic(fmt.Errorf("failed to connect to server at %s:%d | %s", opts.Network.Addr, opts.Network.Port, err))
+		fmt.Printf("Failed to connect to Server %s:%d, %s\n", addr, port, err)
+		return err
 	}
 
 	// Getting ID from server
-	cmd, err := command.Recieve(conn)
+	cmd, err = command.Recieve(conn)
 	if err != nil {
-		panic(fmt.Errorf("failed to get a client id from server"))
+		fmt.Printf("Failed to recieve welcome from Server %s:%d, %s\n", addr, port, err)
+		return err
 	}
-	id := cmd.ClientID
-	g.connected = true
+	var id uint32
+	if cmd.Type == command.TypeWelcome {
+		id = cmd.ClientID
+		g.connected = true
+		defer func() { g.connected = false }()
+	} else {
+		fmt.Printf("Invalid Welcome Response from Server %s:%d!", addr, port)
+		return fmt.Errorf("invalid welcome response")
+	}
 
 	// Reading to network connection
-	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context) {
+	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context, errchan chan<- error) {
+		defer close(errchan)
 		var timeoutCount int = 0
 		for !rl.WindowShouldClose() {
 			select {
@@ -187,10 +201,11 @@ func (g *Game) Network(ctx context.Context) {
 				g.ReadQueue <- cmd
 			}
 		}
-	}(&conn, &wg, ctx)
+	}(&conn, &wg, ctx, rerrchan)
 
 	// Writing to network connection
-	go func(c *net.Conn, w *sync.WaitGroup, wc <-chan *command.Command, ctx context.Context) {
+	go func(c *net.Conn, w *sync.WaitGroup, wc <-chan *command.Command, ctx context.Context, errchan chan<- error) {
+		defer close(errchan)
 		for !rl.WindowShouldClose() {
 			select {
 			case <-ctx.Done():
@@ -206,13 +221,15 @@ func (g *Game) Network(ctx context.Context) {
 				}
 			}
 		}
-	}(&conn, &wg, g.WriteQueue, ctx)
+	}(&conn, &wg, g.WriteQueue, ctx, werrchan)
 
 	select {
 	case <-ctx.Done():
-		conn.Close()
-		g.connected = false
-		return
+		return ctx.Err()
+	case err := <-rerrchan:
+		return err
+	case err := <-werrchan:
+		return err
 	}
 
 }
