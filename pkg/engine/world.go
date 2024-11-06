@@ -38,7 +38,7 @@ func WorldGen(x, y, z, seed int) *World {
 
 func (w *World) Update() {
 	s := len(w.CmdQueue) // number of commands to process this update
-	for i := 0; i < len(w.CmdQueue); i++ {
+	for i := 0; i < s; i++ {
 		w.updateCmdBuffer[i] = <-w.CmdQueue // pulling the commands from channel
 	}
 	// update the world

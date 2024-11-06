@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/client"
-	"github.com/maplelm/dwarfwars/cmd/server/pkg/game"
+	//"github.com/maplelm/dwarfwars/cmd/server/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 	"github.com/maplelm/dwarfwars/pkg/command"
@@ -86,7 +86,7 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 			}
 
 			go s.clients.Monitor(ctx, client, logger, wgrp)
-			cmd, _ := command.New(client.GetID(), command.FormatText, command.CommandWelcome, []byte(strconv.Itoa(int(client.GetID()))))
+			cmd, _ := command.New(client.GetID(), command.FormatText, command.TypeWelcome, []byte(strconv.Itoa(int(client.GetID()))))
 			cmd.Send(client.Connection)
 		}
 	}

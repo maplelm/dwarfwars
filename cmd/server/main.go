@@ -78,7 +78,7 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	s, err = server.New(addr, 10)
+	s, err = server.New(addr)
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		close()

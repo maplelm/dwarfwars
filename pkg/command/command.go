@@ -32,7 +32,7 @@ const (
 	TypeLobbyLeaveRequest
 	TypeInput
 	TypeStartGame
-	TypeWorldDaa
+	TypeWorldData
 	TypeWorldUpdate
 )
 

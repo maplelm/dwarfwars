@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/client"
-	"github.com/maplelm/dwarfwars/cmd/server/pkg/player"
+	//"github.com/maplelm/dwarfwars/cmd/server/pkg/player"
 	"github.com/maplelm/dwarfwars/pkg/command"
 	"github.com/maplelm/dwarfwars/pkg/engine"
 	"github.com/maplelm/dwarfwars/pkg/types"
@@ -61,7 +61,6 @@ func (l *Lobby) PreGame(ctx context.Context, x, y, z, seed int) error {
 				switch v.Type {
 				case command.TypeInput:
 				case command.TypeStartGame:
-					if
 				default:
 				}
 			}
