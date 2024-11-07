@@ -28,12 +28,18 @@ type CommandVersion uint8
 
 const (
 	TypeWelcome = iota
+	TypeLogin
+	TypeRegister
 	TypeLobbyJoinRequest
 	TypeLobbyLeaveRequest
+
 	TypeInput
 	TypeStartGame
 	TypeWorldData
 	TypeWorldUpdate
+
+	TypeError
+	TypeEcho
 )
 
 const (

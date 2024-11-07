@@ -25,6 +25,9 @@ type Client struct {
 	id            uint32
 	dispatchQueue chan<- command.Command
 	outbound      chan command.Command
+
+	SessionSecret []byte
+	Account       *Account
 }
 
 func New(c net.Conn, tor time.Duration, qs int, id uint32, bs int, in chan<- command.Command) *Client {

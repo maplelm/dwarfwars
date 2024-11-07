@@ -21,7 +21,10 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
-type Handler interface {
+/*
+Needed functions for a struct to be a scene
+*/
+type Scene interface {
 	Init(*Game) error
 	UserInput(*Game) error
 	Update(*Game, []*command.Command) error // Might need to add some arguements here so that networked data can be passed here.
@@ -31,7 +34,7 @@ type Handler interface {
 }
 
 type Game struct {
-	Scenes      []Handler
+	Scenes      []Scene
 	activeScene int
 
 	ScreenSize rl.Vector2
@@ -42,14 +45,23 @@ type Game struct {
 
 	networkWait sync.WaitGroup
 	connected   bool
+	connecting  bool
 	ReadQueue   chan *command.Command
 	WriteQueue  chan *command.Command
 
 	Ctx      context.Context
 	ctxClose func()
+
+	NetworkCtx      context.Context
+	NetworkCtxClose func()
+
+	ServerID uint32
+
+	Scale float32
 }
 
-func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], Scenes []Handler) *Game {
+func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], scale float32, Scenes []Scene) *Game {
+	rl.SetConfigFlags(rl.FlagWindowResizable)
 	rl.InitWindow(int32(screenx), int32(screeny), title)
 	return &Game{
 		Scenes:      Scenes,
@@ -80,13 +92,19 @@ func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options
 				return toml.Unmarshal(b, o)
 			})
 		}(),
+
 		ReadQueue:  make(chan *command.Command, 100),
 		WriteQueue: make(chan *command.Command, 100),
+		Scale:      scale,
 	}
 }
 
 func (g *Game) IsConnected() bool {
 	return g.connected
+}
+
+func (g *Game) IsConnecting() bool {
+	return g.connecting
 }
 
 func (g *Game) SetScene(index int) error {
@@ -100,12 +118,41 @@ func (g *Game) SetScene(index int) error {
 	return g.Scenes[g.activeScene].Init(g)
 }
 
+// remove current scene from ram and then move to the next one on the stack
+func (g *Game) PopScene() error {
+	if len(g.Scenes) <= 1 {
+		return fmt.Errorf("can't pop last scene off stack")
+	}
+	g.Scenes = append(g.Scenes[:g.activeScene], g.Scenes[g.activeScene+1:]...)
+	g.SetScene(g.activeScene - 1)
+	return nil
+}
+
+// Goes to a new scene while keeping the current in ram
+func (g *Game) PushScene(s Scene) error {
+	g.Scenes = append(g.Scenes[:g.activeScene+1], append([]Scene{s}, g.Scenes[g.activeScene+1:]...)...)
+	err := g.SetScene(g.activeScene + 1)
+	if err != nil {
+		fmt.Printf("failing to set scene, %s\n", err)
+	}
+	return err
+}
+
+// replaces the current seen with a new one rather then saving the current one in ram while going to a new one
+func (g *Game) ReplaceScene(s Scene) error {
+	g.Scenes[g.activeScene] = s
+	g.SetScene(g.activeScene)
+	return nil
+}
+
 func (g *Game) Run() {
 	g.Ctx, g.ctxClose = context.WithCancel(context.Background())
+	g.NetworkCtx, g.NetworkCtxClose = context.WithCancel(g.Ctx)
 
 	defer g.networkWait.Wait()
 	defer rl.CloseWindow()
 	defer g.ctxClose()
+	defer g.NetworkCtxClose()
 
 	if !g.Scenes[g.activeScene].IsInitialized() {
 		err := g.Scenes[g.activeScene].Init(g)
@@ -134,7 +181,9 @@ func (g *Game) UserInput() {
 	}
 }
 
-func (g *Game) Network(ctx context.Context, addr string, port int) error {
+func (g *Game) Network(ctx context.Context, successsignal chan struct{}, addr string, port int) error {
+	g.connecting = true
+	defer func() { g.connecting = false }()
 	g.networkWait.Add(1)
 	defer g.networkWait.Done()
 
@@ -166,11 +215,14 @@ func (g *Game) Network(ctx context.Context, addr string, port int) error {
 		fmt.Printf("Failed to recieve welcome from Server %s:%d, %s\n", addr, port, err)
 		return err
 	}
-	var id uint32
-	if cmd.Type == command.TypeWelcome {
-		id = cmd.ClientID
+	if cmd.Type == command.TypeWelcome && cmd.Format == command.FormatText {
+		g.ServerID = cmd.ClientID
 		g.connected = true
+		g.connecting = false
 		defer func() { g.connected = false }()
+		if successsignal != nil {
+			successsignal <- struct{}{}
+		}
 	} else {
 		fmt.Printf("Invalid Welcome Response from Server %s:%d!", addr, port)
 		return fmt.Errorf("invalid welcome response")
@@ -211,7 +263,7 @@ func (g *Game) Network(ctx context.Context, addr string, port int) error {
 			case <-ctx.Done():
 				return
 			case cmd := <-g.WriteQueue:
-				cmd.ClientID = id
+				cmd.ClientID = g.ServerID
 				fmt.Printf("Sending data to server (%d), %s", cmd.ClientID, string(cmd.Data))
 				n, err := cmd.Send(*c)
 				if err != nil {
@@ -269,11 +321,25 @@ func (g *Game) Draw() {
 		fmt.Printf("Warning Game Scene (%d) Draw Error: %s\n", g.activeScene, err)
 	}
 
+	var str string
+	var col rl.Color
 	if g.Paused {
-		rl.DrawText("Paused", 0, 0, 12, rl.Black)
+		str = "Paused"
+		col = rl.Red
 	} else {
-		rl.DrawText("Unpaused", 0, 0, 12, rl.Black)
+		str = "Unpaused"
+		col = rl.Black
 	}
+	rl.DrawText(str, 100, 0, 12, col)
+
+	if g.connected {
+		str = "Connected"
+		col = rl.Green
+	} else {
+		str = "Disconnected"
+		col = rl.Red
+	}
+	rl.DrawText(str, 100, 20, 12, col)
 
 	rl.EndDrawing()
 }

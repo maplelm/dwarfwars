@@ -62,38 +62,40 @@ func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logg
 			return ctx.Err()
 		case cmd := <-f.IncomingCommands:
 			logger.Printf("Command Received from: %s, dispatching", strconv.Itoa(int(cmd.ClientID)))
+
 			client, ok := f.activeClients[cmd.ClientID]
 			if !ok {
 				logger.Printf("Error: Failed to get client with id: %s", strconv.Itoa(int(cmd.ClientID)))
-				for k, _ := range f.activeClients {
-					logger.Printf("\t client key: %d", k)
-				}
 				continue
 			}
 
 			switch cmd.Type {
-			case command.TypeWelcome:
 			case command.TypeLobbyJoinRequest:
 			case command.TypeLobbyLeaveRequest:
 			case command.TypeWorldData, command.TypeWorldUpdate:
 				// Error State, Client should be passed to a Game Instance Rather then the Dispatcher by the time these messages are being Send
+			case command.TypeEcho:
+				client.outbound <- cmd
+			case command.TypeWelcome:
+				logger.Printf("Warning: client %d sending Welcome command!", client.id)
 			default:
-				// Unhandled Command
+				response, err := command.New(client.id, command.FormatText, command.TypeError, []byte("not a supported command type at this time"))
+				if err == nil {
+					client.outbound <- *response
+				} else {
+					logger.Printf("Error: Failed to send error response: %s", err)
+				}
 			}
-
-			response, err := command.New(client.id, 0, command.CommandType(0), []byte("command received"))
-			if err != nil {
-				logger.Printf("Error (%d): %s", client.id, err)
-				continue
-			}
-			client.outbound <- *response
 		}
 	}
 }
 
 func (f *Factory) Connect(c net.Conn, logger *log.Logger) (*Client, error) {
 	f.mutex.Lock()
-	defer f.mutex.Unlock()
+	defer func() {
+		f.mutex.TryLock()
+		f.mutex.Unlock()
+	}()
 
 	var id uint32
 
@@ -103,13 +105,32 @@ func (f *Factory) Connect(c net.Conn, logger *log.Logger) (*Client, error) {
 		f.unusedIds = f.unusedIds[1:]
 	} else {
 		var bytes []byte = make([]byte, 4)
-		rand.Read(bytes)
+		for binary.LittleEndian.Uint32(bytes) == 0 {
+			rand.Read(bytes)
+		}
 		id = binary.LittleEndian.Uint32(bytes)
 		logger.Printf("new id %d", id)
 	}
 
-	cli := New(c, f.TimeoutRate, 100, id, f.BufferSize, f.IncomingCommands)
-	f.activeClients[id] = cli
+	cli := New(c, f.TimeoutRate, 100, id, f.BufferSize, f.IncomingCommands) // New Client
+	f.activeClients[id] = cli                                               // Adding Client to Active Client List
+
+	// Send client their ID
+	cmd, err := command.New(id, command.FormatText, command.TypeWelcome, []byte(fmt.Sprint(id)))
+	if err != nil {
+		logger.Printf("Error: failed to send client their id, closing connection")
+		f.mutex.Unlock()
+		f.Disconnect(id)
+		return nil, err
+	}
+
+	_, err = cmd.Send(cli.Connection)
+	if err != nil {
+		logger.Printf("Error: failed to send client their id, closing connection")
+		f.mutex.Unlock()
+		f.Disconnect(id)
+		return nil, err
+	}
 
 	return f.activeClients[id], nil
 }
