@@ -5,6 +5,7 @@ Screen_Height = 450
 
 [Network_Settings]
 Address = "127.0.0.1"
+Connection_Timeout = 5000
 Port = 3_000
 Buffer_Size = 1_024
 

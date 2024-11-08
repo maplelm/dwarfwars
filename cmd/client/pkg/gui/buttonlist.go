@@ -67,19 +67,11 @@ func (bl *ButtonList) Execute() {
 	}
 }
 
-func (bl *ButtonList) Centered() rl.Vector2 {
-	var (
-		x float32
-		y float32
-	)
+func (bl *ButtonList) Center() {
 	if len(bl.List) < bl.Width {
-		x = bl.Position.X - (((bl.Buttonsize.X * (*bl.Scale)) * float32(len(bl.List))) / 2)
+		bl.Position.X = bl.Position.X - (((bl.Buttonsize.X * (*bl.Scale)) * float32(len(bl.List))) / 2)
 	} else {
-		x = bl.Position.X - (((bl.Buttonsize.X * (*bl.Scale)) * float32(bl.Width)) / 2)
+		bl.Position.X = bl.Position.X - (((bl.Buttonsize.X * (*bl.Scale)) * float32(bl.Width)) / 2)
 	}
-	y = bl.Position.Y - ((bl.Buttonsize.Y * (*bl.Scale) * float32(len(bl.List))) / 2)
-	return rl.Vector2{
-		X: x,
-		Y: y,
-	}
+	bl.Position.Y = bl.Position.Y - ((bl.Buttonsize.Y*(*bl.Scale))*(float32(math.Floor(float64(len(bl.List))/float64(bl.Width)))))/2
 }

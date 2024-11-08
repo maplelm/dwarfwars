@@ -32,35 +32,11 @@ type MainMenu struct {
 
 func (mm *MainMenu) Init(g *game.Game) error {
 	defer func() { mm.init = true }()
-	fmt.Println("\n\nMainMenu Init\n\n")
-	mm.Menu = gui.NewButtonList(rl.Vector2{X: 100, Y: 40}, rl.Vector2{X: 200, Y: 100}, 5, &g.Scale)
+	fmt.Println("MainMenu Init")
+
+	mm.Menu = gui.NewButtonList(rl.Vector2{X: 100, Y: 40}, rl.Vector2{X: 200, Y: 100}, 3, &g.Scale)
 	mm.Menu.Add("Connect", func() {
-		if g.IsConnected() {
-			fmt.Println("Already connected to server")
-		} else if g.IsConnecting() {
-			fmt.Println("Still Establishing Connection to server")
-		} else {
-			fmt.Println("Connecting to server")
-			connectionAttempt, AttemptCancel := context.WithDeadline(g.NetworkCtx, time.Now().Add(time.Duration(5)*time.Second))
-			success := make(chan struct{})
-			defer AttemptCancel()
-			go func(ctx context.Context, success chan struct{}) {
-				opts := g.Opts.MustGet()
-				if err := g.Network(g.NetworkCtx, success, opts.Network.Addr, opts.Network.Port); err != nil {
-					fmt.Printf("Network failure, %s", err)
-				}
-			}(connectionAttempt, success)
-			select {
-			case <-connectionAttempt.Done():
-				if connectionAttempt.Err() != nil {
-					fmt.Printf("Failed to connect to server, %s\n", connectionAttempt.Err())
-				} else {
-					fmt.Printf("Connection Attempt Timed out")
-				}
-			case <-success:
-				fmt.Println("Successfully connected to server!")
-			}
-		}
+		Connect(g)
 	})
 	mm.Menu.Add("Quit", func() {
 		rl.CloseWindow()
@@ -79,9 +55,16 @@ func (mm *MainMenu) Init(g *game.Game) error {
 	mm.Menu.Add("Login", func() {
 		fmt.Println("Login button pressed")
 	})
+	mm.Menu.Add("NULL", func() {})
 
 	mm.Menu.Position = rl.Vector2{X: float32(rl.GetScreenWidth()) / 2, Y: float32(rl.GetScreenHeight()) / 2}
-	mm.Menu.Position = mm.Menu.Centered()
+	mm.Menu.Center()
+
+	// Connect to the Network
+	err := Connect(g)
+	if err != nil {
+		fmt.Printf("Warning: Failed to connect to server, %s\n", err)
+	}
 
 	return nil
 }
@@ -101,4 +84,56 @@ func (mm *MainMenu) Draw() error {
 	mm.Menu.Draw()
 	return nil
 
+}
+
+///////////////////////////////////////////
+///////////////////////////////////////////
+///////////////////////////////////////////
+
+func Connect(g *game.Game) error {
+	if g.IsConnected() {
+		return fmt.Errorf("already connected to server")
+	}
+	if g.IsConnecting() {
+		return fmt.Errorf("already attempting to connected to server")
+	}
+
+	fmt.Println("Connecting to Game Server")
+
+	opts, err := g.Opts.ForceRefresh()
+	if err != nil {
+		fmt.Printf("Warning, failed to refresh settings\n")
+	}
+
+	dl, _ := context.WithDeadline(g.NetworkCtx, time.Now().Add(opts.Network.ConnTimeout*time.Millisecond))
+	attempt, cancelattempt := context.WithCancelCause(dl)
+
+	done := make(chan struct{})
+	defer close(done)
+
+	go func(ctx context.Context, c chan struct{}) {
+		opts, err := g.Opts.ForceRefresh()
+		if err != nil {
+			fmt.Printf("Failed to get settings, %s\n", err)
+			cancelattempt(err)
+			return
+		}
+		if err = g.Network(g.NetworkCtx, c, opts.Network.Addr, opts.Network.Port); err != nil {
+			fmt.Printf("Network Failure, %s\n", err)
+			cancelattempt(err)
+		}
+	}(attempt, done)
+
+	select {
+	case <-attempt.Done():
+		if attempt.Err() != nil {
+			fmt.Printf("Failed to connect to server, %s\n", attempt.Err())
+			return attempt.Err()
+		}
+		fmt.Printf("Connection Attempt Timed out\n")
+		return attempt.Err()
+	case <-done:
+		fmt.Printf("Successfully connected to server!\n")
+		return nil
+	}
 }
