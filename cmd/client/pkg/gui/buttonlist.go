@@ -7,36 +7,49 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type button struct {
+type Button struct {
 	Clicked bool
 	Label   string
 	Action  func()
+}
+
+func InitButton(l string, a func()) Button {
+	return Button{
+		Clicked: false,
+		Label:   l,
+		Action:  a,
+	}
 }
 
 type ButtonList struct {
 	Position   rl.Vector2
 	Buttonsize rl.Vector2
 	Width      int
-	List       []button
+	List       []Button
 	Scale      *float32
 }
 
-func NewButtonList(s rl.Vector2, p rl.Vector2, w int, sc *float32) *ButtonList {
+func NewButtonList(dims rl.Rectangle, w int, sc *float32) *ButtonList {
 	return &ButtonList{
-		Buttonsize: s,
-		Position:   p,
+		Buttonsize: rl.Vector2{X: dims.Width, Y: dims.Height},
+		Position:   rl.Vector2{X: dims.X, Y: dims.Y},
 		Width:      w,
 		Scale:      sc,
-		List:       make([]button, 0),
+		List:       make([]Button, 0),
 	}
 }
 
 func (bl *ButtonList) Add(l string, a func()) int {
-	bl.List = append(bl.List, button{
+	bl.List = append(bl.List, Button{
 		Clicked: false,
 		Label:   l,
 		Action:  a,
 	})
+	return len(bl.List) - 1
+}
+
+func (bl *ButtonList) AddMulti(bs []Button) int {
+	bl.List = append(bl.List, bs...)
 	return len(bl.List) - 1
 }
 

@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -63,6 +62,8 @@ type Game struct {
 func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], scale float32, Scenes []Scene) *Game {
 	rl.SetConfigFlags(rl.FlagWindowResizable)
 	rl.InitWindow(int32(screenx), int32(screeny), title)
+	ctx, cc := context.WithCancel(context.Background())
+	nctx, ncc := context.WithCancel(ctx)
 	return &Game{
 		Scenes:      Scenes,
 		activeScene: 0,
@@ -93,9 +94,13 @@ func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options
 			})
 		}(),
 
-		ReadQueue:  make(chan *command.Command, 100),
-		WriteQueue: make(chan *command.Command, 100),
-		Scale:      scale,
+		ReadQueue:       make(chan *command.Command, 100),
+		WriteQueue:      make(chan *command.Command, 100),
+		Scale:           scale,
+		Ctx:             ctx,
+		ctxClose:        cc,
+		NetworkCtx:      nctx,
+		NetworkCtxClose: ncc,
 	}
 }
 
@@ -146,17 +151,13 @@ func (g *Game) ReplaceScene(s Scene) error {
 }
 
 func (g *Game) Run() {
-	g.Ctx, g.ctxClose = context.WithCancel(context.Background())
-	g.NetworkCtx, g.NetworkCtxClose = context.WithCancel(g.Ctx)
-
 	defer g.networkWait.Wait()
 	defer rl.CloseWindow()
 	defer g.ctxClose()
 	defer g.NetworkCtxClose()
 
 	if !g.Scenes[g.activeScene].IsInitialized() {
-		err := g.Scenes[g.activeScene].Init(g)
-		if err != nil {
+		if err := g.Scenes[g.activeScene].Init(g); err != nil {
 			fmt.Printf("Warning Error Initializing Scene (%d): %s\n", g.activeScene, err)
 		}
 	}
@@ -181,7 +182,7 @@ func (g *Game) UserInput() {
 	}
 }
 
-func (g *Game) Network(ctx context.Context, successsignal chan struct{}, addr string, port int) error {
+func (g *Game) Network(ctx context.Context, addr string, port int) error {
 	g.connecting = true
 	defer func() { g.connecting = false }()
 	g.networkWait.Add(1)
@@ -220,9 +221,6 @@ func (g *Game) Network(ctx context.Context, successsignal chan struct{}, addr st
 		g.connected = true
 		g.connecting = false
 		defer func() { g.connected = false }()
-		if successsignal != nil {
-			successsignal <- struct{}{}
-		}
 	} else {
 		fmt.Printf("Invalid Welcome Response from Server %s:%d!", addr, port)
 		return fmt.Errorf("invalid welcome response")
@@ -300,11 +298,12 @@ func (g *Game) Update() {
 		}
 	}
 
+	// Printing commands recieved from server before sending to scene
 	for _, v := range inboundcommands {
-		b, _ := json.Marshal(v)
-		fmt.Printf("Incoming Command: %s\n", b)
+		fmt.Printf("Command From Client: %d\n\tFormat: %d\n\type:%d\n\tData: %s\n\n", v.ClientID, v.Format, v.Type, string(v.Data))
 	}
 
+	// Do not update scene if paused
 	if !g.Paused {
 		err := g.Scenes[g.activeScene].Update(g, inboundcommands) // will need to repace [][]byte{} with network traffic
 		if err != nil {
@@ -316,30 +315,30 @@ func (g *Game) Update() {
 func (g *Game) Draw() {
 	rl.ClearBackground(rl.RayWhite)
 	rl.BeginDrawing()
+
+	// Drawing Scene
 	err := g.Scenes[g.activeScene].Draw()
 	if err != nil {
 		fmt.Printf("Warning Game Scene (%d) Draw Error: %s\n", g.activeScene, err)
 	}
+
+	/////////////////////
+	// Drawing Overlay //
+	/////////////////////
 
 	var str string
 	var col rl.Color
 	if g.Paused {
 		str = "Paused"
 		col = rl.Red
-	} else {
-		str = "Unpaused"
-		col = rl.Black
+		rl.DrawText(str, 100, 100, 12, col)
 	}
-	rl.DrawText(str, 100, 0, 12, col)
 
-	if g.connected {
-		str = "Connected"
-		col = rl.Green
-	} else {
+	if !g.connected {
 		str = "Disconnected"
 		col = rl.Red
+		rl.DrawText(str, 100, 100, 12, col)
 	}
-	rl.DrawText(str, 100, 20, 12, col)
 
 	rl.EndDrawing()
 }

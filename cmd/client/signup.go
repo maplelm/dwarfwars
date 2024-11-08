@@ -9,19 +9,23 @@ import (
 )
 
 type Signup struct {
-	Username string
-	Password string
-	Email    string
-	SSO      string
-	Menu     gui.ButtonList
-
-	back bool
-
-	initialized bool
+	form          *gui.TextBoxGroup
+	Menu          gui.ButtonList
+	minpasslength int
+	back          bool
+	initialized   bool
 }
 
 func (s *Signup) Init(g *game.Game) error {
 	defer func() { s.initialized = true }()
+	s.form = gui.NewTextBoxGroup(rl.NewRectangle(100, 100, 200, 50), 255, 10, rl.Black)
+	s.form.AddMulti([]gui.Textbox{
+		gui.InitTextbox(s.form.Size, "Username", false, false, false, 0.9, 2),
+		gui.InitTextbox(s.form.Size, "Password", true, false, false, 0.9, 2),
+		gui.InitTextbox(s.form.Size, "Email", false, true, false, 0.9, 2),
+	})
+	s.form.Center()
+
 	return nil
 }
 func (s *Signup) IsInitialized() bool          { return s.initialized }
@@ -34,8 +38,19 @@ func (s *Signup) Update(g *game.Game, cmds []*command.Command) error {
 }
 func (s *Signup) Draw() error {
 
-	rlgui.TextBox(rl.NewRectangle(0, 40, 255, 40), &s.Username, 12, true)
-	rl.DrawText("Username", 0, 0, 12, rl.Black)
-	s.back = rlgui.Button(rl.NewRectangle(100, 100, 100, 40), "Back")
+	s.form.Draw()
+	/*
+		if rlgui.TextBox(rl.NewRectangle(float32(rl.GetScreenWidth())/2.0 - (255.0/2.0), float32(rl.GetScreenHeight()/2 - (40.0/2.0) + , 255, 40), &s.Username, 255, s.usernameactivestate) {
+			s.usernameactivestate = !s.usernameactivestate
+		}
+		if rlgui.TextBox(rl.NewRectangle(0, 80, 255, 40), &s.Password, 255, s.passwordactivestate) {
+			s.passwordactivestate = !s.passwordactivestate
+		}
+		if rlgui.TextBox(rl.NewRectangle(0, 120, 255, 40), &s.Email, 255, s.emailactivestate) {
+			s.emailactivestate = !s.emailactivestate
+		}
+		rl.DrawText("Username", 0, 0, 12, rl.Black)
+	*/
+	s.back = rlgui.Button(rl.NewRectangle(400, 100, 100, 40), "Back")
 	return nil
 }
