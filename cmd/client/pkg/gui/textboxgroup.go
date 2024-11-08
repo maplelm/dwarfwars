@@ -82,9 +82,9 @@ func (tbg *TextBoxGroup) ValueByLabel(label string) (string, error) {
 func (tbg *TextBoxGroup) Draw() {
 	cursor := tbg.Position
 
-	for _, t := range tbg.List {
-		t.Draw(cursor, tbg.CharacterLimit, tbg.LabelColor)
-		b := t.Bounds(cursor)
+	for i := range tbg.List {
+		tbg.List[i].Draw(cursor, tbg.CharacterLimit, tbg.LabelColor)
+		b := tbg.List[i].Bounds(cursor)
 		cursor.Y += b.Height + tbg.Gap
 	}
 }
