@@ -7,6 +7,6 @@ error() {
 
 go build -o $PWD/bin/client/gclient ./cmd/client/ || error "Failed to build client"
 cd $PWD/bin/client/ || error "Failed to switch to client bin directory"
-./gclient
+./gclient "$@"
 cd -
 
