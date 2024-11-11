@@ -45,3 +45,11 @@ func (s *Scene) Draw() error {
 	s.menu.Draw()
 	return nil
 }
+
+func (s *Scene) Deconstruct() error {
+	return nil
+}
+
+func (s *Scene) OnResize() error {
+	return nil
+}

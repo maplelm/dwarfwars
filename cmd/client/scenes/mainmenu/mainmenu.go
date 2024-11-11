@@ -18,6 +18,8 @@ type Scene struct {
 	quit     bool
 	sendecho bool
 
+	backgroundimage rl.Texture2D
+
 	init bool
 	Menu *gui.ButtonList
 }
@@ -40,6 +42,8 @@ func (s *Scene) Init(g *game.Game) error {
 		gui.InitButton("Login", func() { g.PushScene(login.New()) }),
 	})
 	s.Menu.Center()
+
+	s.backgroundimage = rl.LoadTexture("./assets/Title.png")
 
 	// Connect to the Network
 	if err = Connect(g); err != nil {
@@ -66,7 +70,16 @@ func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
 }
 
 func (s *Scene) Draw() error {
+	rl.DrawTextureEx(s.backgroundimage, rl.Vector2{X: 0, Y: 0}, 0, 0.5, rl.White)
 	s.Menu.Draw()
 	return nil
 
+}
+
+func (s *Scene) Deconstruct() error {
+	return nil
+}
+
+func (s *Scene) OnUpdate() error {
+	return nil
 }

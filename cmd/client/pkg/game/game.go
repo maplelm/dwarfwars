@@ -24,12 +24,13 @@ import (
 Needed functions for a struct to be a scene
 */
 type Scene interface {
-	Init(*Game) error
-	UserInput(*Game) error
+	Init(*Game) error                       // Should be called lazy right before scene goes into use
+	UserInput(*Game) error                  // Handles any scene specific input requirements
 	Update(*Game, []*command.Command) error // Might need to add some arguements here so that networked data can be passed here.
-	Draw() error
-
-	IsInitialized() bool
+	Draw() error                            // Logic for how to draw everythin in the scene to the screen
+	Deconstruct() error                     // Should be used to clean up the Scene before it gets deleted from the queue
+	IsInitialized() bool                    // Check with a scene has been initialized before forcusing it.
+	OnResize() error                        // Scene behavior when window is resized. do things need to be scaled? that sort of thig
 }
 
 type Game struct {
@@ -53,6 +54,9 @@ type Game struct {
 
 	NetworkCtx      context.Context
 	NetworkCtxClose func()
+
+	SWidth  int
+	SHeight int
 
 	ServerID uint32
 
@@ -116,6 +120,7 @@ func (g *Game) SetScene(index int) error {
 	if index < 0 || index >= len(g.Scenes) {
 		return OOB{}
 	}
+
 	g.activeScene = index
 	if g.Scenes[g.activeScene].IsInitialized() {
 		return nil
@@ -127,6 +132,9 @@ func (g *Game) SetScene(index int) error {
 func (g *Game) PopScene() error {
 	if len(g.Scenes) <= 1 {
 		return fmt.Errorf("can't pop last scene off stack")
+	}
+	if err := g.Scenes[g.activeScene].Deconstruct(); err != nil {
+		fmt.Printf("Warning: Active Scene %d failed to Deconstruct!, %s\n", g.activeScene, err)
 	}
 	g.Scenes = append(g.Scenes[:g.activeScene], g.Scenes[g.activeScene+1:]...)
 	g.SetScene(g.activeScene - 1)
@@ -325,6 +333,16 @@ func (g *Game) Update() {
 	// Printing commands recieved from server before sending to scene
 	for _, v := range inboundcommands {
 		fmt.Printf("Command From Client: %d\n\tFormat: %d\n\type:%d\n\tData: %s\n\n", v.ClientID, v.Format, v.Type, string(v.Data))
+	}
+
+	if rl.IsWindowResized() {
+		g.SWidth = rl.GetScreenWidth()
+		g.SHeight = rl.GetScreenHeight()
+		for i := range g.Scenes {
+			if err := g.Scenes[i].OnResize(); err != nil {
+				fmt.Printf("Warning: Error on OnResize %d, %s\n", g.activeScene, err)
+			}
+		}
 	}
 
 	// Do not update scene if paused

@@ -10,7 +10,7 @@ import (
 )
 
 type Scene struct {
-	form          *gui.TextBoxGroup
+	form          *gui.TextboxGroup
 	Menu          gui.ButtonList
 	minpasslength int
 	back          bool
@@ -24,7 +24,7 @@ func New() *Scene {
 func (s *Scene) Init(g *game.Game) error {
 	defer func() { s.initialized = true }()
 	fmt.Println("signin init")
-	s.form = gui.NewTextBoxGroup(rl.NewRectangle(100, 100, 200, 20), 255, 10, rl.Black)
+	s.form = gui.NewTextboxGroup(rl.NewRectangle(100, 100, 200, 20), 255, 10, rl.Black)
 	s.form.AddMulti([]gui.Textbox{
 		gui.InitTextbox(s.form.Size, "Username", false, false, true, 0.9, 2),
 		gui.InitTextbox(s.form.Size, "Password", true, false, false, 0.9, 2),
@@ -61,5 +61,13 @@ func (s *Scene) Draw() error {
 
 	s.form.Draw()
 	s.Menu.Draw()
+	return nil
+}
+
+func (s *Scene) Deconstruct() error {
+	return nil
+}
+
+func (s *Scene) OnResize() error {
 	return nil
 }

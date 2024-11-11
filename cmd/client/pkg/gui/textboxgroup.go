@@ -41,11 +41,13 @@ func InitTextbox(linesize rl.Vector2, label string, ispassword, isemail, startac
 func (tb *Textbox) Draw(Position rl.Vector2, charlim int, fc rl.Color) {
 	rl.DrawText(tb.Label, int32(Position.X), int32(Position.Y), int32((tb.LineSize.Y * tb.LabelScaling)), fc)
 	if !tb.Password {
-		if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.data, charlim, tb.Active) {
+		if rlgui.TextInputBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), tb.Label, "message", "buttons", &tb.data, int32(charlim), &tb.Active) == 1 {
+			//if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.data, charlim, tb.Active) {
 			tb.Active = !tb.Active
 		}
 	} else {
-		if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.buffer, charlim, tb.Active) {
+		if rlgui.TextInputBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), tb.Label, "message", "buttons", &tb.data, int32(charlim), &tb.Active) == 1 {
+			//if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.buffer, charlim, tb.Active) {
 			tb.Active = !tb.Active
 		}
 
@@ -67,7 +69,11 @@ func (tb *Textbox) Bounds(Position rl.Vector2) rl.Rectangle {
 	return rl.NewRectangle(Position.X, Position.Y, tb.LineSize.X, tb.LineSize.Y+(tb.LineSize.Y*tb.LabelScaling)+tb.Gap)
 }
 
-type TextBoxGroup struct {
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+type TextboxGroup struct {
 	Position       rl.Vector2
 	Size           rl.Vector2
 	CharacterLimit int
@@ -76,8 +82,8 @@ type TextBoxGroup struct {
 	Gap            float32
 }
 
-func NewTextBoxGroup(rect rl.Rectangle, charlimit int, g float32, lc rl.Color) *TextBoxGroup {
-	return &TextBoxGroup{
+func NewTextboxGroup(rect rl.Rectangle, charlimit int, g float32, lc rl.Color) *TextboxGroup {
+	return &TextboxGroup{
 		Position:       rl.Vector2{X: rect.X, Y: rect.Y},
 		Size:           rl.Vector2{X: rect.Width, Y: rect.Height},
 		CharacterLimit: charlimit,
@@ -87,15 +93,15 @@ func NewTextBoxGroup(rect rl.Rectangle, charlimit int, g float32, lc rl.Color) *
 	}
 }
 
-func (tbg *TextBoxGroup) Add(t Textbox) {
+func (tbg *TextboxGroup) Add(t Textbox) {
 	tbg.List = append(tbg.List, t)
 }
 
-func (tbg *TextBoxGroup) AddMulti(t []Textbox) {
+func (tbg *TextboxGroup) AddMulti(t []Textbox) {
 	tbg.List = append(tbg.List, t...)
 }
 
-func (tbg *TextBoxGroup) ValueByLabel(label string) (string, error) {
+func (tbg *TextboxGroup) ValueByLabel(label string) (string, error) {
 	for _, v := range tbg.List {
 		if label == v.Label {
 			return v.data, nil
@@ -104,7 +110,7 @@ func (tbg *TextBoxGroup) ValueByLabel(label string) (string, error) {
 	return "", fmt.Errorf("label not found: %s", label)
 }
 
-func (tbg *TextBoxGroup) Draw() {
+func (tbg *TextboxGroup) Draw() {
 	cursor := tbg.Position
 
 	for i := range tbg.List {
@@ -113,5 +119,5 @@ func (tbg *TextBoxGroup) Draw() {
 	}
 }
 
-func (tbg *TextBoxGroup) Center() {
+func (tbg *TextboxGroup) Center() {
 }
