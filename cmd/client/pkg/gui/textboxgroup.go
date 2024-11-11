@@ -2,17 +2,23 @@ package gui
 
 import (
 	"fmt"
+	//"strings"
 
 	rlgui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type Textbox struct {
-	Label        string
-	Password     bool
-	Email        bool
-	Data         string
-	Active       bool
+	Label string
+
+	Password bool
+	Email    bool
+
+	data   string
+	buffer string
+
+	Active bool
+
 	LineSize     rl.Vector2
 	LabelScaling float32
 	Gap          float32
@@ -23,7 +29,8 @@ func InitTextbox(linesize rl.Vector2, label string, ispassword, isemail, startac
 		Label:        label,
 		Password:     ispassword,
 		Email:        isemail,
-		Data:         "",
+		data:         "",
+		buffer:       "",
 		Active:       startactive,
 		LineSize:     linesize,
 		LabelScaling: labelscale,
@@ -33,9 +40,27 @@ func InitTextbox(linesize rl.Vector2, label string, ispassword, isemail, startac
 
 func (tb *Textbox) Draw(Position rl.Vector2, charlim int, fc rl.Color) {
 	rl.DrawText(tb.Label, int32(Position.X), int32(Position.Y), int32((tb.LineSize.Y * tb.LabelScaling)), fc)
-	if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.Data, charlim, tb.Active) {
-		tb.Active = !tb.Active
+	if !tb.Password {
+		if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.data, charlim, tb.Active) {
+			tb.Active = !tb.Active
+		}
+	} else {
+		if rlgui.TextBox(rl.NewRectangle(Position.X, Position.Y+tb.LineSize.Y+tb.Gap, tb.LineSize.X, tb.LineSize.Y), &tb.buffer, charlim, tb.Active) {
+			tb.Active = !tb.Active
+		}
+
+		if len(tb.buffer) < len(tb.data) {
+			tb.data = tb.data[:len(tb.buffer)]
+		} else if len(tb.buffer) > len(tb.data) {
+			tb.data += string(tb.buffer[len(tb.buffer)-1])
+			tb.buffer = string(tb.buffer[:len(tb.buffer)-1]) + "*"
+		}
 	}
+
+}
+
+func (tb *Textbox) Value() string {
+	return tb.data
 }
 
 func (tb *Textbox) Bounds(Position rl.Vector2) rl.Rectangle {
@@ -73,7 +98,7 @@ func (tbg *TextBoxGroup) AddMulti(t []Textbox) {
 func (tbg *TextBoxGroup) ValueByLabel(label string) (string, error) {
 	for _, v := range tbg.List {
 		if label == v.Label {
-			return v.Data, nil
+			return v.data, nil
 		}
 	}
 	return "", fmt.Errorf("label not found: %s", label)
@@ -84,8 +109,7 @@ func (tbg *TextBoxGroup) Draw() {
 
 	for i := range tbg.List {
 		tbg.List[i].Draw(cursor, tbg.CharacterLimit, tbg.LabelColor)
-		b := tbg.List[i].Bounds(cursor)
-		cursor.Y += b.Height + tbg.Gap
+		cursor.Y += tbg.List[i].Bounds(cursor).Height + tbg.Gap
 	}
 }
 

@@ -18,6 +18,8 @@ import (
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
+
+	"github.com/maplelm/dwarfwars/cmd/client/scenes/mainmenu"
 )
 
 var configPath *string = flag.String("c", "./config/", "location of settings files")
@@ -34,7 +36,7 @@ func main() {
 		}
 		return toml.Unmarshal(b, o)
 	})
-	g := game.New(opts.MustGet().General.ScreenWidth, opts.MustGet().General.ScreenHeight, "Dwarf Wars", opts, 1, []game.Scene{&MainMenu{}})
+	g := game.New(opts.MustGet().General.ScreenWidth, opts.MustGet().General.ScreenHeight, "Dwarf Wars", opts, 1, []game.Scene{mainmenu.New()})
 	rl.SetTargetFPS(60)
 	if opts.MustGet().General.Fullscreen {
 		rl.ToggleFullscreen()

@@ -29,12 +29,12 @@ type ButtonList struct {
 	Scale      *float32
 }
 
-func NewButtonList(dims rl.Rectangle, w int, sc *float32) *ButtonList {
+func NewButtonList(dims rl.Rectangle, w int, scale *float32) *ButtonList {
 	return &ButtonList{
 		Buttonsize: rl.Vector2{X: dims.Width, Y: dims.Height},
 		Position:   rl.Vector2{X: dims.X, Y: dims.Y},
 		Width:      w,
-		Scale:      sc,
+		Scale:      scale,
 		List:       make([]Button, 0),
 	}
 }

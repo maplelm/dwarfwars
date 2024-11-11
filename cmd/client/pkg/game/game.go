@@ -114,7 +114,7 @@ func (g *Game) IsConnecting() bool {
 
 func (g *Game) SetScene(index int) error {
 	if index < 0 || index >= len(g.Scenes) {
-		return fmt.Errorf("specified index out of range")
+		return OOB{}
 	}
 	g.activeScene = index
 	if g.Scenes[g.activeScene].IsInitialized() {
@@ -143,11 +143,35 @@ func (g *Game) PushScene(s Scene) error {
 	return err
 }
 
+func (g *Game) NextScene(shift int) error {
+	if shift+g.activeScene < 0 || shift+g.activeScene >= len(g.Scenes) {
+		return fmt.Errorf("the spcified shift would escape the bounds of the slice")
+	}
+	return g.SetScene(g.activeScene + shift)
+}
+
+func (g *Game) ShiftRight(shift int) error {
+	if shift+g.activeScene < 0 || shift+g.activeScene >= len(g.Scenes) {
+		return OOB{Details: "shift width invalid"}
+	}
+	as := g.Scenes[g.activeScene]
+	if err := g.PopScene(); err != nil {
+		return err
+	}
+	if err := g.NextScene(shift); err != nil {
+		return err
+	}
+	return g.PushScene(as)
+}
+
+func (g *Game) ShiftLeft(shift int) error {
+	return g.ShiftRight(shift * -1)
+}
+
 // replaces the current seen with a new one rather then saving the current one in ram while going to a new one
 func (g *Game) ReplaceScene(s Scene) error {
 	g.Scenes[g.activeScene] = s
-	g.SetScene(g.activeScene)
-	return nil
+	return g.SetScene(g.activeScene)
 }
 
 func (g *Game) Run() {
@@ -161,7 +185,7 @@ func (g *Game) Run() {
 			fmt.Printf("Warning Error Initializing Scene (%d): %s\n", g.activeScene, err)
 		}
 	}
-	for !rl.WindowShouldClose() {
+	for !rl.WindowShouldClose() || (rl.WindowShouldClose() && rl.IsKeyPressed(rl.KeyEscape)) {
 		g.UserInput() // Pause State Agnostic
 		g.Update()    // will not work while game is paused
 		g.Draw()
