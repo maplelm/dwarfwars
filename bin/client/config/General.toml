@@ -2,6 +2,9 @@
 FullScreen = false
 Screen_Width = 800
 Screen_Height = 450
+Default_Font = "Arial.ttf"
+Default_Font_Size = 299
+Default_Font_Resolution = 400
 
 [Network_Settings]
 Address = "127.0.0.1"

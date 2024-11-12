@@ -7,6 +7,9 @@ type Options struct {
 		Fullscreen   bool    `toml:"FullScreen"`
 		ScreenWidth  float32 `toml:"Screen_Width"`
 		ScreenHeight float32 `toml:"Screen_Height"`
+		Font         string  `toml:"Default_Font"`
+		FontSize     int32   `toml:"Default_Font_Size`
+		FontRes      int32   `toml:"Default_Font_Resolution"`
 	} `toml:"General_Settings"`
 
 	Network struct {
