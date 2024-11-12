@@ -59,14 +59,8 @@ func (s *Scene) IsInitialized() bool { return s.init }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-
-	if s.Menu != nil {
-		s.Menu.Execute()
-	} else {
-		fmt.Println("s.Menu not initilized!")
-	}
+	s.Menu.Execute()
 	return nil
-
 }
 
 func (s *Scene) Draw() error {
@@ -80,6 +74,6 @@ func (s *Scene) Deconstruct() error {
 	return nil
 }
 
-func (s *Scene) OnUpdate() error {
+func (s *Scene) OnResize() error {
 	return nil
 }
