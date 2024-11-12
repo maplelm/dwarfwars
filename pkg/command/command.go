@@ -13,6 +13,7 @@ package command
 	Byte 7-10: Size
 */
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 	"net"
@@ -26,9 +27,19 @@ type CommandType uint8
 type CommandVersion uint8
 
 const (
-	CommandWelcome = iota
-	CommandWorldData
-	CommandWorldUpdate
+	TypeWelcome = iota
+	TypeLogin
+	TypeRegister
+	TypeLobbyJoinRequest
+	TypeLobbyLeaveRequest
+
+	TypeInput
+	TypeStartGame
+	TypeWorldData
+	TypeWorldUpdate
+
+	TypeError
+	TypeEcho
 )
 
 const (
@@ -51,6 +62,7 @@ func New(id uint32, format uint8, t CommandType, d []byte) (*Command, error) {
 	if len(d) > int(math.Pow(2, 32)) {
 		return nil, fmt.Errorf("command exceeds data limit")
 	}
+
 	return &Command{
 		Version:  CurrentVersion,
 		ClientID: id,
@@ -63,17 +75,11 @@ func New(id uint32, format uint8, t CommandType, d []byte) (*Command, error) {
 
 func (c Command) Send(conn net.Conn) (int64, error) {
 	bytes := make([]byte, HeaderSize)
-	bytes[0] = byte(c.Version)
-	bytes[1] = byte((c.ClientID >> 24) & 0xFF)
-	bytes[2] = byte((c.ClientID >> 16) & 0xFF)
-	bytes[3] = byte((c.ClientID >> 8) & 0xFF)
-	bytes[4] = byte(c.ClientID & 0xFF)
-	bytes[5] = byte(c.Type)
-	bytes[6] = byte(c.Format)
-	bytes[7] = byte((c.Size >> 24) & 0xFF)
-	bytes[8] = byte((c.Size >> 16) & 0xFF)
-	bytes[9] = byte((c.Size >> 8) & 0xFF)
-	bytes[10] = byte((c.Size & 0xFF))
+	bytes = append([]byte{}, byte(c.Version))
+	bytes = binary.BigEndian.AppendUint32(bytes, c.ClientID)
+	bytes = append(bytes, byte(c.Type))
+	bytes = append(bytes, byte(c.Format))
+	bytes = binary.BigEndian.AppendUint32(bytes, c.Size)
 
 	var b net.Buffers = [][]byte{bytes, c.Data}
 

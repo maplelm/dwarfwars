@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,17 +20,21 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
-type Handler interface {
-	Init(*Game) error
-	UserInput(*Game) error
+/*
+Needed functions for a struct to be a scene
+*/
+type Scene interface {
+	Init(*Game) error                       // Should be called lazy right before scene goes into use
+	UserInput(*Game) error                  // Handles any scene specific input requirements
 	Update(*Game, []*command.Command) error // Might need to add some arguements here so that networked data can be passed here.
-	Draw() error
-
-	IsInitialized() bool
+	Draw() error                            // Logic for how to draw everythin in the scene to the screen
+	Deconstruct() error                     // Should be used to clean up the Scene before it gets deleted from the queue
+	IsInitialized() bool                    // Check with a scene has been initialized before forcusing it.
+	OnResize() error                        // Scene behavior when window is resized. do things need to be scaled? that sort of thig
 }
 
 type Game struct {
-	Scenes      []Handler
+	Scenes      []Scene
 	activeScene int
 
 	ScreenSize rl.Vector2
@@ -42,12 +45,29 @@ type Game struct {
 
 	networkWait sync.WaitGroup
 	connected   bool
+	connecting  bool
 	ReadQueue   chan *command.Command
 	WriteQueue  chan *command.Command
+
+	Ctx      context.Context
+	ctxClose func()
+
+	NetworkCtx      context.Context
+	NetworkCtxClose func()
+
+	SWidth  int
+	SHeight int
+
+	ServerID uint32
+
+	Scale float32
 }
 
-func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], Scenes []Handler) *Game {
+func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], scale float32, Scenes []Scene) *Game {
+	rl.SetConfigFlags(rl.FlagWindowResizable)
 	rl.InitWindow(int32(screenx), int32(screeny), title)
+	ctx, cc := context.WithCancel(context.Background())
+	nctx, ncc := context.WithCancel(ctx)
 	return &Game{
 		Scenes:      Scenes,
 		activeScene: 0,
@@ -77,8 +97,14 @@ func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options
 				return toml.Unmarshal(b, o)
 			})
 		}(),
-		ReadQueue:  make(chan *command.Command, 100),
-		WriteQueue: make(chan *command.Command, 100),
+
+		ReadQueue:       make(chan *command.Command, 100),
+		WriteQueue:      make(chan *command.Command, 100),
+		Scale:           scale,
+		Ctx:             ctx,
+		ctxClose:        cc,
+		NetworkCtx:      nctx,
+		NetworkCtxClose: ncc,
 	}
 }
 
@@ -86,10 +112,15 @@ func (g *Game) IsConnected() bool {
 	return g.connected
 }
 
+func (g *Game) IsConnecting() bool {
+	return g.connecting
+}
+
 func (g *Game) SetScene(index int) error {
 	if index < 0 || index >= len(g.Scenes) {
-		return fmt.Errorf("specified index out of range")
+		return OOB{}
 	}
+
 	g.activeScene = index
 	if g.Scenes[g.activeScene].IsInitialized() {
 		return nil
@@ -97,27 +128,77 @@ func (g *Game) SetScene(index int) error {
 	return g.Scenes[g.activeScene].Init(g)
 }
 
-func (g *Game) Run() {
-	ctx, ctxclose := context.WithCancel(context.Background())
+// remove current scene from ram and then move to the next one on the stack
+func (g *Game) PopScene() error {
+	if len(g.Scenes) <= 1 {
+		return fmt.Errorf("can't pop last scene off stack")
+	}
+	if err := g.Scenes[g.activeScene].Deconstruct(); err != nil {
+		fmt.Printf("Warning: Active Scene %d failed to Deconstruct!, %s\n", g.activeScene, err)
+	}
+	g.Scenes = append(g.Scenes[:g.activeScene], g.Scenes[g.activeScene+1:]...)
+	g.SetScene(g.activeScene - 1)
+	return nil
+}
 
-	defer rl.CloseWindow()
-	defer close(g.ReadQueue)
-	defer close(g.WriteQueue)
+// Goes to a new scene while keeping the current in ram
+func (g *Game) PushScene(s Scene) error {
+	g.Scenes = append(g.Scenes[:g.activeScene+1], append([]Scene{s}, g.Scenes[g.activeScene+1:]...)...)
+	err := g.SetScene(g.activeScene + 1)
+	if err != nil {
+		fmt.Printf("failing to set scene, %s\n", err)
+	}
+	return err
+}
+
+func (g *Game) NextScene(shift int) error {
+	if shift+g.activeScene < 0 || shift+g.activeScene >= len(g.Scenes) {
+		return fmt.Errorf("the spcified shift would escape the bounds of the slice")
+	}
+	return g.SetScene(g.activeScene + shift)
+}
+
+func (g *Game) ShiftRight(shift int) error {
+	if shift+g.activeScene < 0 || shift+g.activeScene >= len(g.Scenes) {
+		return OOB{Details: "shift width invalid"}
+	}
+	as := g.Scenes[g.activeScene]
+	if err := g.PopScene(); err != nil {
+		return err
+	}
+	if err := g.NextScene(shift); err != nil {
+		return err
+	}
+	return g.PushScene(as)
+}
+
+func (g *Game) ShiftLeft(shift int) error {
+	return g.ShiftRight(shift * -1)
+}
+
+// replaces the current seen with a new one rather then saving the current one in ram while going to a new one
+func (g *Game) ReplaceScene(s Scene) error {
+	g.Scenes[g.activeScene] = s
+	return g.SetScene(g.activeScene)
+}
+
+func (g *Game) Run() {
 	defer g.networkWait.Wait()
-	defer ctxclose()
+	defer rl.CloseWindow()
+	defer g.ctxClose()
+	defer g.NetworkCtxClose()
 
 	if !g.Scenes[g.activeScene].IsInitialized() {
-		err := g.Scenes[g.activeScene].Init(g)
-		if err != nil {
+		if err := g.Scenes[g.activeScene].Init(g); err != nil {
 			fmt.Printf("Warning Error Initializing Scene (%d): %s\n", g.activeScene, err)
 		}
 	}
-	go g.Network(ctx)
-	for !rl.WindowShouldClose() {
+	for !rl.WindowShouldClose() || (rl.WindowShouldClose() && rl.IsKeyPressed(rl.KeyEscape)) {
 		g.UserInput() // Pause State Agnostic
 		g.Update()    // will not work while game is paused
 		g.Draw()
 	}
+
 }
 func (g *Game) UserInput() {
 
@@ -133,9 +214,14 @@ func (g *Game) UserInput() {
 	}
 }
 
-func (g *Game) Network(ctx context.Context) {
+func (g *Game) Network(ctx context.Context, addr string, port int) error {
+	g.connecting = true
+	defer func() { g.connecting = false }()
 	g.networkWait.Add(1)
 	defer g.networkWait.Done()
+
+	rerrchan := make(chan error)
+	werrchan := make(chan error)
 
 	var (
 		conn net.Conn
@@ -143,28 +229,38 @@ func (g *Game) Network(ctx context.Context) {
 		wg   sync.WaitGroup
 	)
 
-	opts, err := g.Opts.Get()
+	conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
-		conn, err = net.Dial("tcp", "127.0.0.1:3000")
-		if err != nil {
-			panic(fmt.Errorf("failed to connect to server at %s:%d | %s", opts.Network.Addr, opts.Network.Port, err))
-		}
+		return err
 	}
-	conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", opts.Network.Addr, opts.Network.Port))
+	defer conn.Close()
+
+	cmd, _ := command.New(0, command.FormatText, command.TypeWelcome, []byte{})
+	_, err = cmd.Send(conn)
 	if err != nil {
-		panic(fmt.Errorf("failed to connect to server at %s:%d | %s", opts.Network.Addr, opts.Network.Port, err))
+		fmt.Printf("Failed to connect to Server %s:%d, %s\n", addr, port, err)
+		return err
 	}
 
 	// Getting ID from server
-	cmd, err := command.Recieve(conn)
+	cmd, err = command.Recieve(conn)
 	if err != nil {
-		panic(fmt.Errorf("failed to get a client id from server"))
+		fmt.Printf("Failed to recieve welcome from Server %s:%d, %s\n", addr, port, err)
+		return err
 	}
-	id := cmd.ClientID
-	g.connected = true
+	if cmd.Type == command.TypeWelcome && cmd.Format == command.FormatText {
+		g.ServerID = cmd.ClientID
+		g.connected = true
+		g.connecting = false
+		defer func() { g.connected = false }()
+	} else {
+		fmt.Printf("Invalid Welcome Response from Server %s:%d!", addr, port)
+		return fmt.Errorf("invalid welcome response")
+	}
 
 	// Reading to network connection
-	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context) {
+	go func(c *net.Conn, w *sync.WaitGroup, ctx context.Context, errchan chan<- error) {
+		defer close(errchan)
 		var timeoutCount int = 0
 		for !rl.WindowShouldClose() {
 			select {
@@ -187,16 +283,17 @@ func (g *Game) Network(ctx context.Context) {
 				g.ReadQueue <- cmd
 			}
 		}
-	}(&conn, &wg, ctx)
+	}(&conn, &wg, ctx, rerrchan)
 
 	// Writing to network connection
-	go func(c *net.Conn, w *sync.WaitGroup, wc <-chan *command.Command, ctx context.Context) {
+	go func(c *net.Conn, w *sync.WaitGroup, wc <-chan *command.Command, ctx context.Context, errchan chan<- error) {
+		defer close(errchan)
 		for !rl.WindowShouldClose() {
 			select {
 			case <-ctx.Done():
 				return
 			case cmd := <-g.WriteQueue:
-				cmd.ClientID = id
+				cmd.ClientID = g.ServerID
 				fmt.Printf("Sending data to server (%d), %s", cmd.ClientID, string(cmd.Data))
 				n, err := cmd.Send(*c)
 				if err != nil {
@@ -206,13 +303,15 @@ func (g *Game) Network(ctx context.Context) {
 				}
 			}
 		}
-	}(&conn, &wg, g.WriteQueue, ctx)
+	}(&conn, &wg, g.WriteQueue, ctx, werrchan)
 
 	select {
 	case <-ctx.Done():
-		conn.Close()
-		g.connected = false
-		return
+		return ctx.Err()
+	case err := <-rerrchan:
+		return err
+	case err := <-werrchan:
+		return err
 	}
 
 }
@@ -231,11 +330,22 @@ func (g *Game) Update() {
 		}
 	}
 
+	// Printing commands recieved from server before sending to scene
 	for _, v := range inboundcommands {
-		b, _ := json.Marshal(v)
-		fmt.Printf("Incoming Command: %s\n", b)
+		fmt.Printf("Command From Client: %d\n\tFormat: %d\n\type:%d\n\tData: %s\n\n", v.ClientID, v.Format, v.Type, string(v.Data))
 	}
 
+	if rl.IsWindowResized() {
+		g.SWidth = rl.GetScreenWidth()
+		g.SHeight = rl.GetScreenHeight()
+		for i := range g.Scenes {
+			if err := g.Scenes[i].OnResize(); err != nil {
+				fmt.Printf("Warning: Error on OnResize %d, %s\n", g.activeScene, err)
+			}
+		}
+	}
+
+	// Do not update scene if paused
 	if !g.Paused {
 		err := g.Scenes[g.activeScene].Update(g, inboundcommands) // will need to repace [][]byte{} with network traffic
 		if err != nil {
@@ -247,15 +357,29 @@ func (g *Game) Update() {
 func (g *Game) Draw() {
 	rl.ClearBackground(rl.RayWhite)
 	rl.BeginDrawing()
+
+	// Drawing Scene
 	err := g.Scenes[g.activeScene].Draw()
 	if err != nil {
 		fmt.Printf("Warning Game Scene (%d) Draw Error: %s\n", g.activeScene, err)
 	}
 
+	/////////////////////
+	// Drawing Overlay //
+	/////////////////////
+
+	var str string
+	var col rl.Color
 	if g.Paused {
-		rl.DrawText("Paused", 0, 0, 12, rl.Black)
-	} else {
-		rl.DrawText("Unpaused", 0, 0, 12, rl.Black)
+		str = "Paused"
+		col = rl.Red
+		rl.DrawText(str, 100, 100, 12, col)
+	}
+
+	if !g.connected {
+		str = "Disconnected"
+		col = rl.Red
+		rl.DrawText(str, 100, 100, 12, col)
 	}
 
 	rl.EndDrawing()

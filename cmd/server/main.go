@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"sync"
 
 	// Project Packages
@@ -20,12 +22,28 @@ import (
 var (
 	configPath *string = flag.String("c", "./config/", "location of settings files")
 	headless   *bool   = flag.Bool("h", false, "server will not use a tui and can be automated with scripts")
+	profile    *bool   = flag.Bool("profile", false, "Export Profiling information")
 )
 
 // Main Function
 func main() {
 	// Parse CLI Flags
 	flag.Parse()
+
+	// CPU Profiling Code
+	if *profile {
+		fc, err := os.Create("cpuprofile.txt")
+		if err != nil {
+			panic(err)
+		}
+		defer fc.Close()
+
+		if err := pprof.StartCPUProfile(fc); err != err {
+			panic(err)
+		}
+		defer pprof.StopCPUProfile()
+
+	}
 
 	// Getting Settings from TOML file
 	opts := InitOptionsCache()
@@ -48,6 +66,19 @@ func main() {
 	case false:
 		if err := TuiMode(MainLogger, opts); err != nil {
 			MainLogger.Fatalf("Server Error: %s", err)
+		}
+	}
+
+	// Memory Profiling Code
+	if *profile {
+		runtime.GC()
+		fm, err := os.Create("memoryprofile.txt")
+		if err != nil {
+			panic(err)
+		}
+		defer fm.Close()
+		if err := pprof.WriteHeapProfile(fm); err != nil {
+			panic(err)
 		}
 	}
 }
@@ -78,7 +109,7 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 		logger.Printf("Resolved Server Address: %s", addr.String())
 	}
 
-	s, err = server.New(addr, 10)
+	s, err = server.New(addr)
 	if err != nil {
 		logger.Printf("Failed to Create Server Object: %s", err)
 		close()
@@ -104,6 +135,10 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 				clistd.Printf("Shutting Down")
 				return nil
 			case "ls":
+				clistd.Printf("clients: %d", len(s.Clients()))
+				for _, v := range s.Clients() {
+					clistd.Printf("\t%d", v)
+				}
 				// list Connections
 			case "count":
 				//fmt.Printf("Connections: %d\n", len(server.Connections))

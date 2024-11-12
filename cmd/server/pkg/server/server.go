@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/client"
-	"github.com/maplelm/dwarfwars/cmd/server/pkg/game"
+	//"github.com/maplelm/dwarfwars/cmd/server/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/server/pkg/types"
 	"github.com/maplelm/dwarfwars/pkg/cache"
 	"github.com/maplelm/dwarfwars/pkg/command"
@@ -20,26 +20,25 @@ import (
 type Server struct {
 	Addr     *net.TCPAddr
 	Listener *net.TCPListener
-	CC       chan net.Conn // connection channel
 
-	clientmutex sync.Mutex
+	clientmutex *sync.Mutex
 	clients     *client.Factory
 
-	ActiveGames []*game.Game
+	ActiveGames []types.Lobby
 
 	quit chan struct{}
 }
 
-func New(addr *net.TCPAddr, chanSize int) (*Server, error) {
+func New(addr *net.TCPAddr) (*Server, error) {
 	l, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
-		Addr:     addr,
-		Listener: l,
-		CC:       make(chan net.Conn, chanSize),
-		clients:  client.NewFactory(255, 1024, time.Duration(5)*time.Second),
+		Addr:        addr,
+		Listener:    l,
+		clientmutex: new(sync.Mutex),
+		clients:     client.NewFactory(255, 1024, time.Duration(5)*time.Second),
 	}, nil
 }
 
@@ -82,12 +81,12 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 				continue
 			}
 
-			if client, err = s.clients.Connect(conn); err != nil {
+			if client, err = s.clients.Connect(conn, logger); err != nil {
 				logger.Printf("Failed to Connect with Client: %s", err)
 			}
 
 			go s.clients.Monitor(ctx, client, logger, wgrp)
-			cmd, _ := command.New(client.GetID(), command.FormatText, command.CommandWelcome, []byte(strconv.Itoa(int(client.GetID()))))
+			cmd, _ := command.New(client.GetID(), command.FormatText, command.TypeWelcome, []byte(strconv.Itoa(int(client.GetID()))))
 			cmd.Send(client.Connection)
 		}
 	}
@@ -95,4 +94,8 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 
 func (s *Server) Stop() {
 	s.quit <- struct{}{}
+}
+
+func (s *Server) Clients() []uint32 {
+	return s.clients.Keys()
 }

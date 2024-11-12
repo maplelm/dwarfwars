@@ -31,9 +31,19 @@ func (c *Cache[T]) Get() (*T, error) {
 		if err != nil {
 			return nil, err
 		}
-		//c.lastPolled = time.Now()
+		c.lastPolled = time.Now()
 	}
 	return &c.data, nil
+}
+
+func (c *Cache[T]) ForceRefresh() (*T, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	err := c.refresh(&c.data)
+	if err == nil {
+		c.lastPolled = time.Now()
+	}
+	return &c.data, err
 }
 
 func (c *Cache[T]) MustGet() *T {
