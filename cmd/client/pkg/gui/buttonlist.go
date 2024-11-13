@@ -7,12 +7,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type Button struct {
-	Clicked bool
-	Label   string
-	Action  func()
-}
-
 func InitButton(l string, a func()) Button {
 	return Button{
 		Clicked: false,
