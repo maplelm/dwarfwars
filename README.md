@@ -24,7 +24,8 @@ Need to figure out how to close a socket connection when the client sends a FIN
 packet to the server. the problem is looking like some clients will send a
 RESET connection request if they have data in their buffer or not.
 
-The server will probably need to be broken up into multiple parts to not have the whole thing be quite so monolithic:
+The server will probably need to be broken up into multiple parts to not have
+the whole thing be quite so monolithic:
 
 + __Current__
   + Connection / Auth Server
@@ -78,12 +79,23 @@ would be fine and much easier as I would just have to worry about processing
 the data not if it gets to me properly or not. that can be handed off to the
 NIC card and network drivers if we are using TCP.
 
-Network buffers are an important topic to look into. this is kinda like youtube buffers but for games. 
+Network buffers are an important topic to look into. this is kinda like youtube
+buffers but for games. 
 
 There will need to be a lot of predictive code for where the client is and
 where the server things everything should be. because this is Rimworld type
 game where the player will not have direct control over units this should be
 less touchy to implement...
+
+##### Dispatching
+
+I currently have the server setup to where all clients will interface with a
+default dispatcher at first and then when they request to join a game and they
+are accepted into that game they should be setup to send messages to the game
+instance rather then the Default dispatcher. I have not figured out how I will
+implement this yet But I am thinking that it will be a matter of swapping out
+the channel that the client object has to point to a game instance rather then
+the dispatcher.
 
 ### Frontend
 
