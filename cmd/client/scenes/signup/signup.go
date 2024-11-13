@@ -3,6 +3,7 @@ package signup
 import (
 	"fmt"
 
+	"github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
@@ -32,7 +33,7 @@ func (s *Scene) Init(g *game.Game) error {
 	})
 	s.form.Center()
 
-	s.Menu = *gui.NewButtonList(rl.NewRectangle(400, 100, 100, 50), 2, nil)
+	s.Menu = *gui.NewButtonList(raygui.GetFont(), rl.NewRectangle(400, 100, 100, 50), 2, nil)
 	s.Menu.AddMulti([]gui.Button{
 		gui.InitButton("Back", func() { g.PopScene() }),
 		gui.InitButton("Password", func() {

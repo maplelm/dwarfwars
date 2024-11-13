@@ -27,10 +27,12 @@ type ButtonList struct {
 	Width      int
 	List       []Button
 	Scale      *float32
+	Font       rl.Font
 }
 
-func NewButtonList(dims rl.Rectangle, w int, scale *float32) *ButtonList {
+func NewButtonList(f rl.Font, dims rl.Rectangle, w int, scale *float32) *ButtonList {
 	return &ButtonList{
+		Font:       f,
 		Buttonsize: rl.Vector2{X: dims.Width, Y: dims.Height},
 		Position:   rl.Vector2{X: dims.X, Y: dims.Y},
 		Width:      w,
@@ -54,22 +56,17 @@ func (bl *ButtonList) AddMulti(bs []Button) int {
 }
 
 func (bl *ButtonList) Draw() {
+	bf := raygui.GetFont()
+	raygui.SetFont(bl.Font)
 	for i, v := range bl.List {
 		if bl.Scale != nil {
 			v.Clicked = raygui.Button(rl.NewRectangle(bl.Position.X+bl.Buttonsize.X*float32(i%bl.Width), bl.Position.Y+((bl.Buttonsize.Y**bl.Scale)*float32(math.Floor(float64(i)/float64(bl.Width)))), bl.Buttonsize.X, bl.Buttonsize.Y), v.Label)
 		} else {
 			v.Clicked = raygui.Button(rl.NewRectangle(bl.Position.X+bl.Buttonsize.X*float32(i%bl.Width), bl.Position.Y+bl.Buttonsize.Y*float32(math.Floor(float64(i)/float64(bl.Width))), bl.Buttonsize.X, bl.Buttonsize.Y), v.Label)
 		}
-
-		/*
-			if bl.Scale != nil {
-				v.Clicked = raygui.Button(rl.NewRectangle(bl.Position.X, bl.Position.Y+((bl.Buttonsize.Y**bl.Scale)*float32(i)), bl.Buttonsize.X, bl.Buttonsize.Y), v.Label)
-			} else {
-				v.Clicked = raygui.Button(rl.NewRectangle(bl.Position.X, bl.Position.Y+bl.Buttonsize.Y*float32(i), bl.Buttonsize.X, bl.Buttonsize.Y), v.Label)
-			}
-		*/
 		bl.List[i] = v
 	}
+	raygui.SetFont(bf)
 }
 
 func (bl *ButtonList) Execute() {
