@@ -30,6 +30,8 @@ var (
 )
 
 func main() {
+
+	// Pulling Commandline Agurement flags
 	flag.Parse()
 
 	// CPU Profiling Code
@@ -63,17 +65,18 @@ func main() {
 	g := game.New(opts.MustGet().General.ScreenWidth, opts.MustGet().General.ScreenHeight, "Dwarf Wars", opts, 1, []game.Scene{mainmenu.New()})
 
 	// Setting Target FPS
-	rl.SetTargetFPS(60)
+	rl.SetTargetFPS(opts.MustGet().General.TargetFPS)
 
 	// Checking if settings specify fullscreen
 	if opts.MustGet().General.Fullscreen {
 		rl.ToggleFullscreen()
 	}
 
-	// Start the game
+	// Setup Complete
+	// Start the Game Client
 	g.Run()
 
-	// Memory Profiling Code
+	// Memory Profiling after program has run
 	if *profile {
 		runtime.GC()
 		fm, err := os.Create("memoryprofile.txt")

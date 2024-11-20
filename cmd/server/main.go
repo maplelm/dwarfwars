@@ -50,6 +50,7 @@ func main() {
 
 	// Initializing the Logger object
 	MainLogger := InitLogger(opts)
+	MainLogger.Printf("Starting Logging...")
 
 	// Validating the SQL Server
 	MainLogger.Println("Validating Database Before Server Bootup")
@@ -61,11 +62,11 @@ func main() {
 	switch *headless {
 	case true:
 		if err := CliMode(MainLogger, opts); err != nil {
-			MainLogger.Fatalf("Server Error: %s", err)
+			MainLogger.Printf("Server Error: %s", err)
 		}
 	case false:
 		if err := TuiMode(MainLogger, opts); err != nil {
-			MainLogger.Fatalf("Server Error: %s", err)
+			MainLogger.Printf("Server Error: %s", err)
 		}
 	}
 

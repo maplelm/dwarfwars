@@ -16,11 +16,11 @@ import (
 )
 
 type Factory struct {
-	IdSize      int
-	BufferSize  int
-	TimeoutRate time.Duration
+	IdSize          uint32
+	TimeoutRate     time.Duration
+	TimeoutPollRate time.Duration
 
-	IncomingCommands chan command.Command
+	IncomingCommands chan *command.Command
 
 	mutex         sync.RWMutex
 	unusedIds     []uint32
@@ -28,12 +28,12 @@ type Factory struct {
 	activeClients map[uint32]*Client
 }
 
-func NewFactory(idsize, buffsize int, tor time.Duration) *Factory {
+func NewFactory(idsize uint32, tor, tpr time.Duration) *Factory {
 	return &Factory{
 		IdSize:           idsize,
-		BufferSize:       buffsize,
 		TimeoutRate:      tor,
-		IncomingCommands: make(chan command.Command, 100),
+		TimeoutPollRate:  tpr,
+		IncomingCommands: make(chan *command.Command, 100),
 		unusedIds:        make([]uint32, 0),
 		activeClients:    make(map[uint32]*Client),
 	}
@@ -43,16 +43,36 @@ func (f *Factory) Monitor(ctx context.Context, c *Client, logger *log.Logger, wg
 	wgrp.Add(1)
 	defer wgrp.Done()
 
-	err := c.Serve(logger, ctx)
-	switch err {
-	case net.ErrClosed:
-		logger.Printf("Client (%d) closed connection", c.id)
-	case syscall.ECONNRESET:
-		logger.Printf("Client (%d) likely dropped connection", c.id)
-	default:
-		logger.Printf("Client (%d) Error: %s", c.id, err)
+	cc := make(chan error)
+	defer close(cc)
+
+	go func() {
+		cc <- c.Serve(logger, ctx)
+	}()
+
+eventloop:
+	for {
+		select {
+		case e := <-cc:
+			switch e {
+			case net.ErrClosed:
+				logger.Printf("Client (%d) closed connection", c.uid)
+				break eventloop
+			case syscall.ECONNRESET:
+				logger.Printf("Client (%d) likely dropped connection", c.uid)
+				break eventloop
+			default:
+				logger.Printf("Client (%d) Error: %s", c.uid, e)
+			}
+		case <-time.After(f.TimeoutPollRate):
+			if time.Since(c.checkin) >= f.TimeoutRate {
+				logger.Printf("Client (%d) has timed out", c.uid)
+				break eventloop
+			}
+		}
 	}
-	return f.Disconnect(c.id)
+
+	return f.Disconnect(c.uid)
 }
 
 func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logger) error {
@@ -75,13 +95,13 @@ func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logg
 			case command.TypeWorldData, command.TypeWorldUpdate:
 				// Error State, Client should be passed to a Game Instance Rather then the Dispatcher by the time these messages are being Send
 			case command.TypeEcho:
-				client.outbound <- cmd
+				client.sendToClient <- cmd
 			case command.TypeWelcome:
-				logger.Printf("Warning: client %d sending Welcome command!", client.id)
+				logger.Printf("Warning: client %d sending Welcome command!", client.uid)
 			default:
-				response, err := command.New(client.id, command.FormatText, command.TypeError, []byte("not a supported command type at this time"))
+				response, err := command.New(client.uid, command.FormatText, command.TypeError, []byte("not a supported command type at this time"))
 				if err == nil {
-					client.outbound <- *response
+					client.sendToClient <- response
 				} else {
 					logger.Printf("Error: Failed to send error response: %s", err)
 				}
@@ -112,8 +132,8 @@ func (f *Factory) Connect(c net.Conn, logger *log.Logger) (*Client, error) {
 		logger.Printf("new id %d", id)
 	}
 
-	cli := New(c, f.TimeoutRate, 100, id, f.BufferSize, f.IncomingCommands) // New Client
-	f.activeClients[id] = cli                                               // Adding Client to Active Client List
+	cli := New(c, uint32(100), id, f.IncomingCommands) // New Client
+	f.activeClients[id] = cli                          // Adding Client to Active Client List
 
 	// Send client their ID
 	cmd, err := command.New(id, command.FormatText, command.TypeWelcome, []byte(fmt.Sprint(id)))
@@ -151,7 +171,7 @@ func (f *Factory) Disconnect(id uint32) error {
 func (f *Factory) Keys() []uint32 {
 	keys := make([]uint32, len(f.activeClients))
 	index := 0
-	for k, _ := range f.activeClients {
+	for k := range f.activeClients {
 		keys[index] = k
 		index++
 	}

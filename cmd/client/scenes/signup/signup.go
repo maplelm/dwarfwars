@@ -72,3 +72,5 @@ func (s *Scene) Deconstruct() error {
 func (s *Scene) OnResize() error {
 	return nil
 }
+
+func (s *Scene) PausedUpdate(g *game.Game, cmds []*command.Command) error { return nil }

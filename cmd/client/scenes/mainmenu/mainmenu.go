@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui/button"
+
 	// rlgui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 
@@ -16,20 +18,20 @@ import (
 )
 
 type Scene struct {
-	connect  bool
-	quit     bool
-	sendecho bool
+	// Background
+	bgcolor rl.Color
 
+	// Interface
 	Font     rl.Font
 	FontSize int32
 
+	// Interface Elements
+	Menu       *gui.ButtonList
+	testbutton button.Button
+
+	// State Tracking
 	ScreenSize rl.Vector2
-
-	bgcolor rl.Color
-
-	init             bool
-	Menu             *gui.ButtonList
-	ButtonMenuOrigin rl.Rectangle
+	init       bool
 }
 
 func New() *Scene {
@@ -37,58 +39,58 @@ func New() *Scene {
 }
 
 func (s *Scene) Init(g *game.Game) error {
-	var (
-		MenuWidth int = 2
-		err       error
-		fontname  string
-	)
-	// Setting screen size so function does not need to be called every time the value is needed
-	s.ScreenSize = rl.Vector2{
-		X: float32(rl.GetScreenWidth()),
-		Y: float32(rl.GetScreenHeight()),
-	}
 
-	// Loading Font into Memory
+	// Background Setup
+	s.bgcolor = rl.DarkBrown
+
+	// Interface Setup
 	opts, err := g.Opts.Get()
 	if err != nil {
-		fontname = "Arial.ttf"
+		s.Font = rl.LoadFontEx(filepath.Join("./assets/fonts/", "Arial.ttf"), 400, nil, 0)
 		s.FontSize = 100
 	} else {
-		fontname = opts.General.Font
+		s.Font = rl.LoadFontEx(filepath.Join("./assets/fonts/", opts.General.Font), opts.General.FontRes, nil, 0)
 		s.FontSize = opts.General.FontSize
 	}
 
-	s.Font = rl.LoadFontEx(filepath.Join("./assets/fonts/", fontname), 400, nil, 0)
-
-	// Setting Up Button Menu
-	s.ButtonMenuOrigin = rl.NewRectangle(
-		float32(rl.GetScreenWidth())/2.0,
-		float32(rl.GetScreenHeight())/2.0,
-		float32(rl.GetScreenWidth())/6,
-		float32(rl.GetScreenHeight())/8,
-	)
-	s.Menu = gui.NewButtonList(s.Font, s.ButtonMenuOrigin, MenuWidth, &g.Scale)
-
-	s.bgcolor = rl.DarkBrown
-
-	s.Menu = gui.NewButtonList(s.Font, rl.NewRectangle(s.ScreenSize.X/2, s.ScreenSize.Y/2, 100, 40), MenuWidth, &g.Scale)
-	s.Menu.AddMulti([]gui.Button{
-		gui.InitButton("Connect", func() { Connect(g) }),
-		gui.InitButton("Quit", func() { rl.CloseWindow() }),
-		gui.InitButton("Sign Up", func() { g.PushScene(signup.New()) }),
-		gui.InitButton("Login", func() { g.PushScene(login.New()) }),
-	})
+	// Interface Element Setups
+	s.Menu = gui.NewButtonList(s.Font, rl.NewRectangle(s.ScreenSize.X/2, s.ScreenSize.Y/2, 100, 40), 2, &g.Scale)
+	/*
+		s.Menu.AddMulti([]gui.Button{
+			gui.InitButton("Connect", func() { Connect(g) }),
+			gui.InitButton("Quit", func() { rl.CloseWindow() }),
+			gui.InitButton("Sign Up", func() { g.PushScene(signup.New()) }),
+			gui.InitButton("Login", func() { g.PushScene(login.New()) }),
+		})
+	*/
 	s.Menu.Buttonsize = rl.Vector2{
 		X: s.ScreenSize.X / 8,
 		Y: s.ScreenSize.Y / 6,
 	}
 	s.Menu.Center()
 
+	s.testbutton = button.Button{
+		Label:       "Test",
+		Bounds:      rl.NewRectangle(0, 0, float32(rl.GetScreenWidth()), float32(rl.GetScreenHeight())),
+		Clicked:     false,
+		Color:       rl.Red,
+		BorderWidth: 5,
+		BorderColor: rl.Black,
+		Action:      func() { fmt.Println("Action Button!") },
+	}
+
+	// State Tracking Setup
+	s.ScreenSize = rl.Vector2{
+		X: float32(rl.GetScreenWidth()),
+		Y: float32(rl.GetScreenHeight()),
+	}
+
 	// Connect to the Network
 	if err = Connect(g); err != nil {
 		fmt.Printf("Warning: Failed to connect to server, %s\n", err)
 	}
 
+	// Init Finished
 	s.init = true
 	return err
 }
@@ -98,6 +100,7 @@ func (s *Scene) IsInitialized() bool { return s.init }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
+	//s.testbutton.Update()
 	s.Menu.Execute()
 	return nil
 }
@@ -105,6 +108,7 @@ func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
 func (s *Scene) Draw() error {
 	rl.DrawRectangle(0, 0, int32(rl.GetScreenWidth()), int32(rl.GetScreenHeight()), rl.Brown)
 
+	//s.testbutton.Draw()
 	sizing := rl.MeasureTextEx(s.Font, "Dwarf  Wars", 100, 0)
 	rl.DrawTextEx(s.Font,
 		"Dwarf  Wars",
@@ -142,3 +146,5 @@ func (s *Scene) OnResize() error {
 
 	return nil
 }
+
+func (s *Scene) PausedUpdate(g *game.Game, cmds []*command.Command) error { return nil }

@@ -85,8 +85,9 @@ func (s *Server) Start(opts *cache.Cache[types.Options], logger *log.Logger, wgr
 				logger.Printf("Failed to Connect with Client: %s", err)
 			}
 
+			logger.Printf("Starting up Monitor for %d", client.Uid())
 			go s.clients.Monitor(ctx, client, logger, wgrp)
-			cmd, _ := command.New(client.GetID(), command.FormatText, command.TypeWelcome, []byte(strconv.Itoa(int(client.GetID()))))
+			cmd, _ := command.New(client.Uid(), command.FormatText, command.TypeWelcome, []byte(strconv.Itoa(int(client.Uid()))))
 			cmd.Send(client.Connection)
 		}
 	}

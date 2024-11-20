@@ -17,6 +17,6 @@ func NewSprite(t rl.Texture2D, ss *SpriteSheet, am *AnimationMatrix) *Sprite {
 }
 
 func (s *Sprite) PushFrame() rl.Rectangle {
-	x, y := s.Animation.AnimationFrame()
+	x, y := 1, 1 // s.Animation.AnimationFrame()
 	return s.Spritesheet.GetFrame(x, y)
 }

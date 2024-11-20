@@ -13,42 +13,48 @@ import (
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
+/*
+This class is the base unit for the server. clients will be based around and
+they will be the onlyes activating work. The only exception would be the game
+world goruitines.
+*/
 type Client struct {
-	TimeoutRate time.Duration
-	Connection  net.Conn
 
-	readmut      sync.RWMutex
-	readtimeouts int
+	// Client State
+	Account        *Account
+	GameInstanceID uint32 // What game the client is currently engaged with
 
-	BufferSize int
+	// Network Connection State
+	sendToInternal chan<- *command.Command // Channel the client will use to send message received from connection to an internal system within the server
+	sendToClient   chan *command.Command   // commands that will be sent to the connection
+	Connection     net.Conn
+	checkin        time.Time // last time a message was recieved over connection
 
-	id            uint32
-	dispatchQueue chan<- command.Command
-	outbound      chan command.Command
+	// Network Security State
+	Secret []byte
+	uid    uint32
 
-	SessionSecret []byte
-	Account       *Account
+	// Concurrency
+	readlock *sync.Mutex
 }
 
-func New(c net.Conn, tor time.Duration, qs int, id uint32, bs int, in chan<- command.Command) *Client {
+func New(c net.Conn, qs, uid uint32, InternalSystemQueue chan<- *command.Command) *Client {
 	return &Client{
-		id:            id,
-		TimeoutRate:   tor,
-		BufferSize:    bs,
-		Connection:    c,
-		dispatchQueue: in,
-		outbound:      make(chan command.Command, qs),
-		readtimeouts:  0,
+		uid:            uid,
+		Connection:     c,
+		sendToInternal: InternalSystemQueue,
+		sendToClient:   make(chan *command.Command, qs),
+		readlock:       new(sync.Mutex),
 	}
 }
 
-func (c *Client) GetID() uint32 {
-	return c.id
+func (c *Client) Uid() uint32 {
+	return c.uid
 }
 
 func (c *Client) Send(cmd *command.Command) int {
-	c.outbound <- *cmd
-	return len(c.outbound)
+	c.sendToClient <- cmd
+	return len(c.sendToClient)
 }
 
 func (c *Client) Serve(logger *log.Logger, ctx context.Context) error {
@@ -64,26 +70,18 @@ func (c *Client) Serve(logger *log.Logger, ctx context.Context) error {
 	// Write Outbound Data
 	go c.write(writeerr, logger, clientctx)
 
-	for {
-		select {
-		case <-clientctx.Done():
-			return clientctx.Err()
-		case e := <-readerr:
-			return e
-		case e := <-writeerr:
-			return e
-		}
+	select {
+	case <-clientctx.Done():
+		return clientctx.Err()
+	case e := <-readerr:
+		return e
+	case e := <-writeerr:
+		return e
 	}
 }
 
 func (c *Client) Close() error {
 	return c.Connection.Close()
-}
-
-func (c *Client) TimedOut() bool {
-	c.readmut.RLock()
-	defer c.readmut.RUnlock()
-	return c.readtimeouts > 15
 }
 
 func (c *Client) read(e chan<- error, logger *log.Logger, ctx context.Context) error {
@@ -111,7 +109,8 @@ func (c *Client) read(e chan<- error, logger *log.Logger, ctx context.Context) e
 					logger.Printf("Network Read Error: %s", err)
 				}
 			}
-			c.dispatchQueue <- *cmd
+			c.sendToInternal <- cmd
+			c.checkin = time.Now()
 		}
 	}
 }
@@ -123,7 +122,7 @@ func (c *Client) write(e chan<- error, logger *log.Logger, ctx context.Context) 
 		case <-ctx.Done():
 			e <- ctx.Err()
 			return ctx.Err()
-		case cmd := <-c.outbound:
+		case cmd := <-c.sendToClient:
 			for i := 0; i < 3; i++ {
 				if n, err := cmd.Send(c.Connection); err != nil {
 					if opErr, ok := err.(*net.OpError); ok && !opErr.Temporary() {
@@ -146,7 +145,12 @@ func (c *Client) write(e chan<- error, logger *log.Logger, ctx context.Context) 
 	}
 }
 
+// This is where the client will join an active game that has started
+func (c *Client) JoinGame(id uint32) error {
+	return nil
+}
+
 func (c *Client) Disconect() error {
-	close(c.outbound)
+	close(c.sendToClient)
 	return c.Connection.Close()
 }

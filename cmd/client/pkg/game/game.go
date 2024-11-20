@@ -24,13 +24,14 @@ import (
 Needed functions for a struct to be a scene
 */
 type Scene interface {
-	Init(*Game) error                       // Should be called lazy right before scene goes into use
-	UserInput(*Game) error                  // Handles any scene specific input requirements
-	Update(*Game, []*command.Command) error // Might need to add some arguements here so that networked data can be passed here.
-	Draw() error                            // Logic for how to draw everythin in the scene to the screen
-	Deconstruct() error                     // Should be used to clean up the Scene before it gets deleted from the queue
-	IsInitialized() bool                    // Check with a scene has been initialized before forcusing it.
-	OnResize() error                        // Scene behavior when window is resized. do things need to be scaled? that sort of thig
+	Init(*Game) error                             // Should be called lazy right before scene goes into use
+	UserInput(*Game) error                        // Handles any scene specific input requirements
+	Update(*Game, []*command.Command) error       // Might need to add some arguements here so that networked data can be passed here.
+	PausedUpdate(*Game, []*command.Command) error // This function will be the alternate update function for what will happen to scene logic if the game is paused
+	Draw() error                                  // Logic for how to draw everythin in the scene to the screen
+	Deconstruct() error                           // Should be used to clean up the Scene before it gets deleted from the queue
+	IsInitialized() bool                          // Check with a scene has been initialized before forcusing it.
+	OnResize() error                              // Scene behavior when window is resized. do things need to be scaled? that sort of thig
 }
 
 type Game struct {
@@ -183,29 +184,38 @@ func (g *Game) ReplaceScene(s Scene) error {
 }
 
 func (g *Game) Run() {
+	// Make sure any running network code has properly closed down before returning
 	defer g.networkWait.Wait()
+	// Make sure that the Raylib Window is closed
 	defer rl.CloseWindow()
+	// Cancel the Game Context so any go routines will start to shutdown
 	defer g.ctxClose()
+	// Cancel the Networking context so networking code will start to shutdown
 	defer g.NetworkCtxClose()
 
+	// Making sure the current scene has been initialized before running.
 	if !g.Scenes[g.activeScene].IsInitialized() {
 		if err := g.Scenes[g.activeScene].Init(g); err != nil {
 			fmt.Printf("Warning Error Initializing Scene (%d): %s\n", g.activeScene, err)
 		}
 	}
+
+	// Main Game Loop
 	for !rl.WindowShouldClose() || (rl.WindowShouldClose() && rl.IsKeyPressed(rl.KeyEscape)) {
-		g.UserInput() // Pause State Agnostic
+		g.UserInput() // will not work while game is paused
 		g.Update()    // will not work while game is paused
-		g.Draw()
+		g.Draw()      // Draw the overlay after calling the scene's draw function
 	}
 
 }
 func (g *Game) UserInput() {
 
+	// Pause the game if the p key is pressed
 	if rl.IsKeyPressed(rl.KeyP) && !rl.IsKeyPressedRepeat(rl.KeyP) {
 		g.Paused = !g.Paused
 	}
 
+	// Run the Sence Update function if game is not paused
 	if !g.Paused {
 		err := g.Scenes[g.activeScene].UserInput(g)
 		if err != nil {
