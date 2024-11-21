@@ -40,6 +40,7 @@ const (
 
 	TypeError
 	TypeEcho
+	TypeKeepAlive
 )
 
 const (
