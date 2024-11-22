@@ -60,17 +60,38 @@ func (b *Button) Draw() error {
 	if b.BorderWidth > 0 {
 		rl.DrawRectangle(int32(b.Bounds.X)-b.BorderWidth, int32(b.Bounds.Y)-b.BorderWidth, int32(b.Bounds.Width)+(b.BorderWidth*2), int32(b.Bounds.Y)+(b.BorderWidth*2), b.BorderColor)
 	}
+	rl.DrawRectangle(int32(b.Bounds.X), int32(b.Bounds.Y), int32(b.Bounds.Width), int32(b.Bounds.Height), b.Color)
 
 	lm := rl.MeasureTextEx(b.Font, b.Label, float32(b.FontSize), 0)
 
-	rl.DrawText(b.Label, int32(b.Bounds.X)+(int32(b.Bounds.Width)/2)-int32(lm.X)/2, int32(b.Bounds.Y)+(int32(b.Bounds.Height/2))-int32(lm.Y)/2, 20, b.Color)
+	rl.DrawText(b.Label, int32(b.Bounds.X)+(int32(b.Bounds.Width)/2)-int32(lm.X)/2, int32(b.Bounds.Y)+(int32(b.Bounds.Height/2))-int32(lm.Y)/2, 20, b.FontColor)
 	return nil
 }
 
 func (b *Button) DrawHover() error {
+	if b.BorderWidth > 0 {
+		rl.DrawRectangle(int32(b.Bounds.X)-b.BorderWidth, int32(b.Bounds.Y)-b.BorderWidth, int32(b.Bounds.Width)+(b.BorderWidth*2), int32(b.Bounds.Y)+(b.BorderWidth*2), b.BorderColor)
+	}
+	nc := b.Color
+	nc.R += 15
+	nc.G += 15
+	nc.B += 15
+	rl.DrawRectangle(int32(b.Bounds.X), int32(b.Bounds.Y), int32(b.Bounds.Width), int32(b.Bounds.Height), nc)
+
+	lm := rl.MeasureTextEx(b.Font, b.Label, float32(b.FontSize), 0)
+
+	rl.DrawText(b.Label, int32(b.Bounds.X)+(int32(b.Bounds.Width)/2)-int32(lm.X)/2, int32(b.Bounds.Y)+(int32(b.Bounds.Height/2))-int32(lm.Y)/2, 20, b.FontColor)
 	return nil
 }
 
 func (b *Button) DrawClick() error {
+	if b.BorderWidth > 0 {
+		rl.DrawRectangle(int32(b.Bounds.X)-b.BorderWidth, int32(b.Bounds.Y)-b.BorderWidth, int32(b.Bounds.Width)+(b.BorderWidth*2), int32(b.Bounds.Y)+(b.BorderWidth*2), b.BorderColor)
+	}
+	rl.DrawRectangle(int32(b.Bounds.X), int32(b.Bounds.Y), int32(b.Bounds.Width), int32(b.Bounds.Height), b.Color)
+
+	lm := rl.MeasureTextEx(b.Font, b.Label, float32(b.FontSize), 0)
+
+	rl.DrawText(b.Label, int32(b.Bounds.X)+(int32(b.Bounds.Width)/2)-int32(lm.X)/2, int32(b.Bounds.Y)+(int32(b.Bounds.Height/2))-int32(lm.Y)/2, 20, b.FontColor)
 	return nil
 }

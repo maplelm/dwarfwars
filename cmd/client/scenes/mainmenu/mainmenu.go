@@ -61,6 +61,10 @@ func (s *Scene) Init(g *game.Game) error {
 	s.Menu = gui.NewButtonList(s.Font, rl.NewRectangle(s.ScreenSize.X/2, s.ScreenSize.Y/2, 100, 40), 2, &g.Scale)
 	a, err := engine.NewAnimationMatrix(3, 1, 3, 0, rl.LoadTexture("./assets/"), rl.Vector2{X: 32, Y: 32}, rl.White, nil)
 	s.testimagebutton = *button.NewImageButton("Sign in", func() { g.PushScene(signup.New()) }, rl.NewRectangle(100, 100, 300, 100), *a, 0, rl.Black, rl.Font{}, 32, rl.Black)
+	s.Menu.Add("Connect", func() { Connect(g) })
+	s.Menu.Add("Quit", func() { rl.CloseWindow() })
+	s.Menu.Add("Sign Up", func() { g.PushScene(signup.New()) })
+	s.Menu.Add("Login", func() { g.PushScene(login.New()) })
 	/*
 		s.Menu.AddMulti([]gui.Button{
 			gui.InitButton("Connect", func() { Connect(g) }),
@@ -108,7 +112,7 @@ func (s *Scene) UserInput(g *game.Game) error { return nil }
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
 	//s.testbutton.Update()
 	s.testimagebutton.Update()
-	s.Menu.Execute()
+	//s.Menu.Execute()
 	return nil
 }
 
@@ -128,7 +132,7 @@ func (s *Scene) Draw() error {
 		0,
 		rl.Black,
 	)
-	s.Menu.Draw()
+	//s.Menu.Draw()
 	return nil
 
 }

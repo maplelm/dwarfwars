@@ -7,12 +7,14 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
+	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui/button"
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
 type Scene struct {
-	form          *gui.TextboxGroup
-	Menu          gui.ButtonList
+	form *gui.TextboxGroup
+	Menu button.List
+	//Menu          gui.ButtonList
 	minpasslength int
 	back          bool
 	initialized   bool
@@ -33,7 +35,13 @@ func (s *Scene) Init(g *game.Game) error {
 	})
 	s.form.Center()
 
-	s.Menu = *gui.NewButtonList(raygui.GetFont(), rl.NewRectangle(400, 100, 100, 50), 2, nil)
+	//s.Menu = *gui.NewButtonList(raygui.GetFont(), rl.NewRectangle(400, 100, 100, 50), 2, nil)
+	s.Menu = *button.NewList(rl.Vector2{X: 400, Y: 100}, raygui.GetFont(), 2, 1, 2, rl.Black, rl.Green, 32, rl.Black, rl.Vector2{X: 150, Y: 50})
+	s.Menu.Add("Back", func() { g.PopScene() })
+	s.Menu.Add("Password", func() {
+		val, _ := s.form.ValueByLabel("Password")
+		fmt.Println("Password Data: ", val)
+	})
 	/*
 		s.Menu.AddMulti([]gui.Button{
 			gui.InitButton("Back", func() { g.PopScene() }),
@@ -57,13 +65,13 @@ func (s *Scene) Init(g *game.Game) error {
 func (s *Scene) IsInitialized() bool          { return s.initialized }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-	//s.Menu.Execute()
+	s.Menu.Update()
 	return nil
 }
 func (s *Scene) Draw() error {
 
 	s.form.Draw()
-	//s.Menu.Draw()
+	s.Menu.Draw()
 	return nil
 }
 
