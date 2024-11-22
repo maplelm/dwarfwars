@@ -51,6 +51,9 @@ func (b *Button) IsHovered() bool {
 }
 
 func (b *Button) Draw() error {
+	if b.IsHovered() && rl.IsMouseButtonDown(rl.MouseButtonLeft) {
+		return b.DrawClick()
+	}
 	if b.IsHovered() {
 		return b.DrawHover()
 	}
