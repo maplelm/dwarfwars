@@ -34,34 +34,36 @@ func (s *Scene) Init(g *game.Game) error {
 	s.form.Center()
 
 	s.Menu = *gui.NewButtonList(raygui.GetFont(), rl.NewRectangle(400, 100, 100, 50), 2, nil)
-	s.Menu.AddMulti([]gui.Button{
-		gui.InitButton("Back", func() { g.PopScene() }),
-		gui.InitButton("Password", func() {
-			val, _ := s.form.ValueByLabel("Password")
-			fmt.Println("password data: ", val)
-		}),
-		gui.InitButton("Username", func() {
-			val, _ := s.form.ValueByLabel("Username")
-			fmt.Println("Username data: ", val)
-		}),
-		gui.InitButton("Email", func() {
-			val, _ := s.form.ValueByLabel("Email")
-			fmt.Println("Email data: ", val)
-		}),
-	})
+	/*
+		s.Menu.AddMulti([]gui.Button{
+			gui.InitButton("Back", func() { g.PopScene() }),
+			gui.InitButton("Password", func() {
+				val, _ := s.form.ValueByLabel("Password")
+				fmt.Println("password data: ", val)
+			}),
+			gui.InitButton("Username", func() {
+				val, _ := s.form.ValueByLabel("Username")
+				fmt.Println("Username data: ", val)
+			}),
+			gui.InitButton("Email", func() {
+				val, _ := s.form.ValueByLabel("Email")
+				fmt.Println("Email data: ", val)
+			}),
+		})
+	*/
 
 	return nil
 }
 func (s *Scene) IsInitialized() bool          { return s.initialized }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-	s.Menu.Execute()
+	//s.Menu.Execute()
 	return nil
 }
 func (s *Scene) Draw() error {
 
 	s.form.Draw()
-	s.Menu.Draw()
+	//s.Menu.Draw()
 	return nil
 }
 

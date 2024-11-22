@@ -124,7 +124,7 @@ func (am *AnimationMatrix) NextFrame() {
 	}
 }
 
-func (am *AnimationMatrix) DrawAnimationFrame(pos rl.Vector2) {
+func (am *AnimationMatrix) DrawAnimationFrame() {
 	x := am.current % am.width
 	y := int(math.Floor(float64(am.current) / float64(am.width)))
 	if am.fps > 0 && time.Since(am.lastframetick) >= time.Second/time.Duration(am.fps) {

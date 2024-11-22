@@ -12,6 +12,7 @@ import (
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
 	"github.com/maplelm/dwarfwars/pkg/command"
+	"github.com/maplelm/dwarfwars/pkg/engine"
 
 	"github.com/maplelm/dwarfwars/cmd/client/scenes/login"
 	"github.com/maplelm/dwarfwars/cmd/client/scenes/signup"
@@ -32,6 +33,9 @@ type Scene struct {
 	// State Tracking
 	ScreenSize rl.Vector2
 	init       bool
+
+	// Testing
+	testimagebutton button.ImageButton
 }
 
 func New() *Scene {
@@ -55,6 +59,8 @@ func (s *Scene) Init(g *game.Game) error {
 
 	// Interface Element Setups
 	s.Menu = gui.NewButtonList(s.Font, rl.NewRectangle(s.ScreenSize.X/2, s.ScreenSize.Y/2, 100, 40), 2, &g.Scale)
+	a, err := engine.NewAnimationMatrix(3, 1, 3, 0, rl.LoadTexture("./assets/"), rl.Vector2{X: 32, Y: 32}, rl.White, nil)
+	s.testimagebutton = *button.NewImageButton("Sign in", func() { g.PushScene(signup.New()) }, rl.NewRectangle(100, 100, 300, 100), *a, 0, rl.Black, rl.Font{}, 32, rl.Black)
 	/*
 		s.Menu.AddMulti([]gui.Button{
 			gui.InitButton("Connect", func() { Connect(g) }),
@@ -101,6 +107,7 @@ func (s *Scene) UserInput(g *game.Game) error { return nil }
 
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
 	//s.testbutton.Update()
+	s.testimagebutton.Update()
 	s.Menu.Execute()
 	return nil
 }
@@ -109,6 +116,7 @@ func (s *Scene) Draw() error {
 	rl.DrawRectangle(0, 0, int32(rl.GetScreenWidth()), int32(rl.GetScreenHeight()), rl.Brown)
 
 	//s.testbutton.Draw()
+	s.testimagebutton.Draw()
 	sizing := rl.MeasureTextEx(s.Font, "Dwarf  Wars", 100, 0)
 	rl.DrawTextEx(s.Font,
 		"Dwarf  Wars",

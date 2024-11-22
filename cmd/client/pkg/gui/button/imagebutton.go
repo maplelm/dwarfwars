@@ -19,6 +19,9 @@ type ImageButton struct {
 	Font        rl.Font
 	FontSize    int32
 	FontColor   rl.Color
+
+	// State
+	hovered bool
 }
 
 func NewImageButton(l string, action func(), bounds rl.Rectangle, s engine.AnimationMatrix, bw int32, bc rl.Color, f rl.Font, fs int32, fc rl.Color) *ImageButton {
@@ -41,21 +44,38 @@ I want to update this so that I can calculate if the button is being hovered eve
 */
 func (b *ImageButton) IsHovered() bool {
 	mp := rl.GetMousePosition()
-	return mp.X >= b.Bounds.X && mp.X <= b.Bounds.X+b.Bounds.Width && mp.Y >= b.Bounds.Y && mp.Y <= b.Bounds.Y+b.Bounds.Height
+	b.hovered = b.Bounds.X >= b.Bounds.X && mp.X <= b.Bounds.X+b.Bounds.Width && mp.Y >= b.Bounds.Y && mp.Y <= b.Bounds.Y+b.Bounds.Height
+	return b.hovered
 }
 
-func (b *ImageButton) Execute() error {
-	return nil
+func (b *ImageButton) UpdateVisualState() {
+
+	if !b.hovered && b.IsHovered() {
+		b.Sprite.SetFrames(1)
+	} else if b.hovered && !b.IsHovered() {
+		b.Sprite.SetFrames(0)
+	}
+
+	if b.hovered && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+		b.Sprite.SetFrames(2)
+	}
+	if b.Sprite.Frames() == 2 && rl.IsMouseButtonReleased(rl.MouseButtonLeft) {
+		if b.hovered {
+			b.Sprite.SetFrames(1)
+		} else {
+			b.Sprite.SetFrames(0)
+		}
+	}
 }
 
-func (b *ImageButton) Draw() error {
-	return nil
+func (b *ImageButton) Update() {
+	b.UpdateVisualState()
+	if b.IsHovered() && rl.IsMouseButtonReleased(rl.MouseButtonLeft) {
+		b.Action()
+	}
 }
 
-func (b *ImageButton) DrawHover() error {
-	return nil
-}
-
-func (b *ImageButton) DrawClicked() error {
-	return nil
+func (b *ImageButton) Draw() (err error) {
+	b.Sprite.DrawAnimationFrame()
+	return
 }
