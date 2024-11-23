@@ -10,7 +10,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
-	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
+	//"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
 	"github.com/maplelm/dwarfwars/pkg/command"
 	"github.com/maplelm/dwarfwars/pkg/engine"
 
@@ -27,7 +27,8 @@ type Scene struct {
 	FontSize int32
 
 	// Interface Elements
-	Menu       *gui.ButtonList
+	Menu button.List
+	//Menu       *gui.ButtonList
 	testbutton button.Button
 
 	// State Tracking
@@ -58,36 +59,15 @@ func (s *Scene) Init(g *game.Game) error {
 	}
 
 	// Interface Element Setups
-	s.Menu = gui.NewButtonList(s.Font, rl.NewRectangle(s.ScreenSize.X/2, s.ScreenSize.Y/2, 100, 40), 2, &g.Scale)
 	a, err := engine.NewAnimationMatrix(3, 1, 3, 0, rl.LoadTexture("./assets/"), rl.Vector2{X: 32, Y: 32}, rl.White, nil)
+
 	s.testimagebutton = *button.NewImageButton("Sign in", func() { g.PushScene(signup.New()) }, rl.NewRectangle(100, 100, 300, 100), *a, 0, rl.Black, rl.Font{}, 32, rl.Black)
+
+	s.Menu = *button.NewList(rl.Vector2{X: s.ScreenSize.X / 2, Y: s.ScreenSize.Y / 2}, s.Font, 2, 1, 2, rl.Black, rl.Green, s.FontSize, rl.Black, rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6})
 	s.Menu.Add("Connect", func() { Connect(g) })
 	s.Menu.Add("Quit", func() { rl.CloseWindow() })
 	s.Menu.Add("Sign Up", func() { g.PushScene(signup.New()) })
 	s.Menu.Add("Login", func() { g.PushScene(login.New()) })
-	/*
-		s.Menu.AddMulti([]gui.Button{
-			gui.InitButton("Connect", func() { Connect(g) }),
-			gui.InitButton("Quit", func() { rl.CloseWindow() }),
-			gui.InitButton("Sign Up", func() { g.PushScene(signup.New()) }),
-			gui.InitButton("Login", func() { g.PushScene(login.New()) }),
-		})
-	*/
-	s.Menu.Buttonsize = rl.Vector2{
-		X: s.ScreenSize.X / 8,
-		Y: s.ScreenSize.Y / 6,
-	}
-	s.Menu.Center()
-
-	s.testbutton = button.Button{
-		Label:       "Test",
-		Bounds:      rl.NewRectangle(0, 0, float32(rl.GetScreenWidth()), float32(rl.GetScreenHeight())),
-		Clicked:     false,
-		Color:       rl.Red,
-		BorderWidth: 5,
-		BorderColor: rl.Black,
-		Action:      func() { fmt.Println("Action Button!") },
-	}
 
 	// State Tracking Setup
 	s.ScreenSize = rl.Vector2{
@@ -110,17 +90,17 @@ func (s *Scene) IsInitialized() bool { return s.init }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-	//s.testbutton.Update()
 	s.testimagebutton.Update()
-	//s.Menu.Execute()
+
+	s.Menu.Update()
+
 	return nil
 }
 
 func (s *Scene) Draw() error {
 	rl.DrawRectangle(0, 0, int32(rl.GetScreenWidth()), int32(rl.GetScreenHeight()), rl.Brown)
-
-	//s.testbutton.Draw()
 	s.testimagebutton.Draw()
+	s.Menu.Draw()
 	sizing := rl.MeasureTextEx(s.Font, "Dwarf  Wars", 100, 0)
 	rl.DrawTextEx(s.Font,
 		"Dwarf  Wars",
@@ -148,13 +128,12 @@ func (s *Scene) OnResize() error {
 	}
 
 	// Re-Center button Cluster
-	s.Menu.Buttonsize.X = s.ScreenSize.X / 6
-	s.Menu.Buttonsize.Y = s.ScreenSize.Y / 8
-	s.Menu.Position = rl.Vector2{
-		X: s.ScreenSize.X / 2.0,
-		Y: s.ScreenSize.Y / 2.0,
-	}
-	s.Menu.Center()
+	s.Menu.ButtonSize.X = s.ScreenSize.X / 6
+	s.Menu.ButtonSize.Y = s.ScreenSize.Y / 8
+	s.Menu.Move(rl.Vector2{
+		X: s.ScreenSize.X/2 - s.Menu.Position.X,
+		Y: s.ScreenSize.Y/2 - s.Menu.Position.Y,
+	})
 
 	return nil
 }
