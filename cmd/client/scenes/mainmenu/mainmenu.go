@@ -6,11 +6,9 @@ import (
 
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui/button"
 
-	// rlgui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
-	//"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
 	"github.com/maplelm/dwarfwars/pkg/command"
 	"github.com/maplelm/dwarfwars/pkg/engine"
 
@@ -51,8 +49,9 @@ func (s *Scene) Init(g *game.Game) error {
 	// Interface Setup
 	opts, err := g.Opts.Get()
 	if err != nil {
+		fmt.Println("Failed to Get Options to setup font: ", err)
 		s.Font = rl.LoadFontEx(filepath.Join("./assets/fonts/", "Arial.ttf"), 400, nil, 0)
-		s.FontSize = 100
+		s.FontSize = 32
 	} else {
 		s.Font = rl.LoadFontEx(filepath.Join("./assets/fonts/", opts.General.Font), opts.General.FontRes, nil, 0)
 		s.FontSize = opts.General.FontSize
@@ -63,7 +62,7 @@ func (s *Scene) Init(g *game.Game) error {
 
 	s.testimagebutton = *button.NewImageButton("Sign in", func() { g.PushScene(signup.New()) }, rl.NewRectangle(100, 100, 300, 100), *a, 0, rl.Black, rl.Font{}, 32, rl.Black)
 
-	s.Menu = *button.NewList(rl.Vector2{X: s.ScreenSize.X / 2, Y: s.ScreenSize.Y / 2}, s.Font, 2, 1, 2, rl.Black, rl.Green, s.FontSize, rl.Black, rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6})
+	s.Menu = *button.NewList(rl.Vector2{X: float32(rl.GetScreenWidth()) / 2, Y: float32(rl.GetScreenHeight()) / 2}, s.Font, 2, 1, 2, rl.Black, rl.Green, s.FontSize, rl.Black, rl.Vector2{X: float32(rl.GetScreenWidth()) / 8, Y: float32(rl.GetScreenHeight()) / 6})
 	s.Menu.Add("Connect", func() { Connect(g) })
 	s.Menu.Add("Quit", func() { rl.CloseWindow() })
 	s.Menu.Add("Sign Up", func() { g.PushScene(signup.New()) })
@@ -112,7 +111,6 @@ func (s *Scene) Draw() error {
 		0,
 		rl.Black,
 	)
-	//s.Menu.Draw()
 	return nil
 
 }
