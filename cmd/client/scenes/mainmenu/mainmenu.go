@@ -69,8 +69,8 @@ func (s *Scene) Init(g *game.Game) error {
 	s.testimagebutton = *button.NewImageButton("Sign in", func() { g.PushScene(signup.New()) }, rl.NewRectangle(100, 100, 300, 100), *a, 0, rl.Black, rl.Font{}, 32, rl.Black)
 
 	s.Menu = *button.NewList(
-		rl.Vector2{X: s.ScreenSize.X / 2, Y: s.ScreenSize.Y / 2},
-		rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6},
+		rl.Vector2{X: 0, Y: 0},
+		rl.Vector2{X: 0, Y: 0},
 		2,
 		2,
 		32,
@@ -83,6 +83,12 @@ func (s *Scene) Init(g *game.Game) error {
 	s.Menu.Add("Quit", func() { rl.CloseWindow() })
 	s.Menu.Add("Sign Up", func() { g.PushScene(signup.New()) })
 	s.Menu.Add("Login", func() { g.PushScene(login.New()) })
+	s.Menu.ButtonSize = rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6}
+	menusize := s.Menu.Size()
+	s.Menu.Position = rl.Vector2{
+		X: s.ScreenSize.X/2 - menusize.X/2,
+		Y: s.ScreenSize.Y/2 - menusize.Y/2,
+	}
 
 	// Connect to the Network
 	if err = Connect(g); err != nil {
@@ -135,10 +141,10 @@ func (s *Scene) OnResize() error {
 	s.Menu.ButtonSize.X = s.ScreenSize.X / 6
 	s.Menu.ButtonSize.Y = s.ScreenSize.Y / 8
 	menusize := s.Menu.Size()
-	s.Menu.Move(rl.Vector2{
+	s.Menu.Position = rl.Vector2{
 		X: s.ScreenSize.X/2 - menusize.X/2,
 		Y: s.ScreenSize.Y/2 - menusize.Y/2,
-	})
+	}
 
 	return nil
 }

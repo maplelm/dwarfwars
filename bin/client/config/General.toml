@@ -1,7 +1,13 @@
 [General_Settings]
 FullScreen = false
-Screen_Width = 800
-Screen_Height = 450
+# LQ  |  480p - 720x480
+# HD  |  720p - 1280x720
+# FHD | 1080p - 1920x1080
+# 2K  | 1440p - 2560x1440
+# 4K  | 2160p - 3840x2160
+# 8K  | 4320p - 7680x4320
+Screen_Width = 2560
+Screen_Height = 1440 
 FPS = 60
 Default_Font = "AlmendraSC-Regular.ttf"
 Default_Font_Size = 100 # Height in pixels
