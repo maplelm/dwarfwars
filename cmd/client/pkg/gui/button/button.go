@@ -1,14 +1,12 @@
 package button
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
 
-type Button struct {
-	// Properties
-	Label   string
-	Clicked bool
-	Action  func()
+	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
+)
 
-	// Graphics
+type bGraphics struct {
 	Bounds      rl.Rectangle
 	BorderWidth int32
 	BorderColor rl.Color
@@ -18,31 +16,47 @@ type Button struct {
 	FontColor   rl.Color
 }
 
-func New(l string, a func(), b rl.Rectangle, bw int32, bc rl.Color, c rl.Color, f rl.Font, fs int32, fc rl.Color) *Button {
-	return &Button{
-		Label:       l,
-		Clicked:     false,
-		Action:      a,
-		Bounds:      b,
-		BorderWidth: bw,
-		BorderColor: bc,
-		Color:       c,
-		Font:        f,
-		FontSize:    fs,
-		FontColor:   fc,
+func NewbGraphics(bounds rl.Rectangle, borderwidth int32, bordercolor, color rl.Color, font rl.Font, fontsize int32, fontcolor rl.Color) *bGraphics {
+	return &bGraphics{
+		Bounds:      bounds,
+		BorderWidth: borderwidth,
+		BorderColor: bordercolor,
+		Color:       color,
+		Font:        font,
+		FontSize:    fontsize,
+		FontColor:   fontcolor,
 	}
 }
 
-func (b *Button) Update() {
-	mp := rl.GetMousePosition()
+type Button struct {
+	Label   string
+	Clicked bool
+	Action  func()
 
-	if mp.X >= b.Bounds.X && mp.X <= b.Bounds.X+b.Bounds.Width && mp.Y >= b.Bounds.Y && mp.Y <= b.Bounds.Y+b.Bounds.Height && rl.IsMouseButtonPressed(rl.MouseLeftButton) && b.Clicked == false {
+	Graphics *bGraphics
+}
+
+func New(l string, a func(), graphics *bGraphics) *Button {
+	return &Button{
+		Label:    l,
+		Clicked:  false,
+		Action:   a,
+		Graphics: graphics,
+	}
+}
+
+func (b *Button) Update() error {
+	if b.Graphics == nil {
+		return gui.ErrNoGraphics("button update failed, must use UpdateWithBounds if Graphics is nil")
+	}
+
+	if b.MustIsHovered() && rl.IsMouseButtonPressed(rl.MouseLeftButton) && b.Clicked == false {
 		b.Action()
 		b.Clicked = true
 	} else if rl.IsMouseButtonReleased(rl.MouseLeftButton) && b.Clicked == true {
 		b.Clicked = false
 	}
-
+	return nil
 }
 
 func (b *Button) UpdateWithBounds(bounds rl.Rectangle) {
@@ -54,79 +68,88 @@ func (b *Button) UpdateWithBounds(bounds rl.Rectangle) {
 	}
 }
 
-func (b *Button) IsHovered() bool {
-	mp := rl.GetMousePosition()
-	return mp.X >= b.Bounds.X && mp.X <= b.Bounds.X+b.Bounds.Width && mp.Y >= b.Bounds.Y && mp.Y <= b.Bounds.Y+b.Bounds.Height
+func (b *Button) IsHovered() (bool, error) {
+	if b.Graphics == nil {
+		return false, gui.ErrNoGraphics("button IsHovered failed, must use IsHoveredWithBounds if Graphics is nil")
+	}
+	return b.IsHoveredWithBounds(b.Graphics.Bounds), nil
+}
+
+func (b *Button) MustIsHovered() bool {
+	if b.Graphics == nil {
+		panic(gui.ErrNoGraphics("button IsHovered failed, must use IsHoveredWithBounds if Graphics is nil"))
+	}
+	return b.IsHoveredWithBounds(b.Graphics.Bounds)
 }
 
 func (b *Button) IsHoveredWithBounds(bounds rl.Rectangle) bool {
 	mp := rl.GetMousePosition()
-	return mp.X >= bounds.X && mp.X <= bounds.X+bounds.Width && mp.Y >= bounds.Y && mp.Y <= bounds.Y+bounds.Height
+	return mp.X > bounds.X && mp.X < bounds.X+bounds.Width && mp.Y > bounds.Y && mp.Y < bounds.Y+bounds.Height
 }
 
 func (b *Button) Draw() error {
-	if b.IsHovered() {
+	if b.Graphics == nil {
+		return gui.ErrNoGraphics("button draw failed, must use DrawWithGraphics if Grphics is null")
+	}
+	if b.MustIsHovered() {
 		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
-			return b.DrawClick()
+			// Button Clicked on
+			g := *b.Graphics
+			g.Color.R += 15
+			g.Color.G += 15
+			g.Color.B += 15
+			b.DrawWithGraphics(g)
 		} else {
-			return b.DrawHover()
+			// Button Hovered
+			g := *b.Graphics
+			g.Color.R -= 15
+			g.Color.G -= 15
+			g.Color.B -= 15
+			b.DrawWithGraphics(g)
 		}
+		return nil
 	}
-	if b.BorderWidth > 0 {
-		rl.DrawRectangle(int32(b.Bounds.X)-b.BorderWidth, int32(b.Bounds.Y)-b.BorderWidth, int32(b.Bounds.Width)+(b.BorderWidth*2), int32(b.Bounds.Y)+(b.BorderWidth*2), b.BorderColor)
-	}
-	rl.DrawRectangle(int32(b.Bounds.X), int32(b.Bounds.Y), int32(b.Bounds.Width), int32(b.Bounds.Height), b.Color)
-
-	lm := rl.MeasureTextEx(b.Font, b.Label, float32(b.FontSize), 0)
-
-	rl.DrawTextEx(b.Font, b.Label, rl.Vector2{X: b.Bounds.X + b.Bounds.Width/2 - lm.X/2, Y: b.Bounds.Y + b.Bounds.Height/2 - lm.Y/2}, float32(b.FontSize), 0, b.FontColor)
+	b.DrawWithGraphics(*b.Graphics)
 	return nil
 }
 
-func (b *Button) DrawHover() error {
-	hcolor := b.Color
-	hcolor.R += 15
-	hcolor.G += 15
-	hcolor.B += 15
-	if b.BorderWidth > 0 {
-		rl.DrawRectangle(int32(b.Bounds.X)-b.BorderWidth, int32(b.Bounds.Y)-b.BorderWidth, int32(b.Bounds.Width)+(b.BorderWidth*2), int32(b.Bounds.Y)+(b.BorderWidth*2), b.BorderColor)
-	}
-	rl.DrawRectangle(int32(b.Bounds.X), int32(b.Bounds.Y), int32(b.Bounds.Width), int32(b.Bounds.Height), hcolor)
-
-	lm := rl.MeasureTextEx(b.Font, b.Label, float32(b.FontSize), 0)
-
-	rl.DrawTextEx(b.Font, b.Label, rl.Vector2{X: b.Bounds.X + b.Bounds.Width/2 - lm.X/2, Y: b.Bounds.Y + b.Bounds.Height/2 - lm.Y/2}, float32(b.FontSize), 0, b.FontColor)
-	return nil
-}
-
-func (b *Button) DrawClick() error {
-	if b.BorderWidth > 0 {
-		rl.DrawRectangle(int32(b.Bounds.X)-b.BorderWidth, int32(b.Bounds.Y)-b.BorderWidth, int32(b.Bounds.Width)+(b.BorderWidth*2), int32(b.Bounds.Y)+(b.BorderWidth*2), b.BorderColor)
-	}
-	rl.DrawRectangle(int32(b.Bounds.X), int32(b.Bounds.Y), int32(b.Bounds.Width), int32(b.Bounds.Height), b.Color)
-
-	lm := rl.MeasureTextEx(b.Font, b.Label, float32(b.FontSize), 0)
-
-	rl.DrawTextEx(b.Font, b.Label, rl.Vector2{X: b.Bounds.X + b.Bounds.Width/2 - lm.X/2, Y: b.Bounds.Y + b.Bounds.Height/2 - lm.Y/2}, float32(b.FontSize), 0, b.FontColor)
-	return nil
-}
-
-func (b *Button) DrawWithGraphics(
+func (b *Button) DrawCustom(
 	bounds rl.Rectangle,
 	border int32,
 	bordercolor, color rl.Color,
 	font rl.Font,
 	fontsize int32,
 	fontcolor rl.Color,
-) error {
+) {
+	b.DrawWithGraphics(bGraphics{
+		Bounds:      bounds,
+		BorderWidth: border,
+		BorderColor: bordercolor,
+		Color:       color,
+		Font:        font,
+		FontSize:    fontsize,
+		FontColor:   fontcolor,
+	})
+}
 
-	if border > 0 {
-		rl.DrawRectangle(int32(bounds.X)-border, int32(bounds.Y)-border, int32(bounds.Width)+(border*2), int32(bounds.Y)+(border*2), bordercolor)
+func (b *Button) DrawWithGraphics(g bGraphics) {
+
+	// Only Draw Border if it will showon the button
+	if g.BorderWidth > 0 {
+		x := int32(g.Bounds.X - float32(g.BorderWidth))
+		y := int32(g.Bounds.Y - float32(g.BorderWidth))
+		w := int32(g.Bounds.Width + float32(g.BorderWidth*2))
+		h := int32(g.Bounds.Height + float32(g.BorderWidth*2))
+		rl.DrawRectangle(x, y, w, h, g.BorderColor)
 	}
-	rl.DrawRectangle(int32(bounds.X), int32(bounds.Y), int32(bounds.Width), int32(bounds.Height), color)
+	rl.DrawRectangle(int32(g.Bounds.X), int32(g.Bounds.Y), int32(g.Bounds.Width), int32(g.Bounds.Height), g.Color)
 
-	lm := rl.MeasureTextEx(font, b.Label, float32(fontsize), 0)
+	lm := rl.MeasureTextEx(g.Font, b.Label, float32(g.FontSize), 0).X / 2
 
-	rl.DrawTextEx(font, b.Label, rl.Vector2{X: bounds.X + (bounds.Width/2 - lm.X/2), Y: bounds.Y + (bounds.Height/2 - lm.Y/2)}, float32(fontsize), 0, fontcolor)
-	return nil
+	pos := rl.Vector2{
+		X: (g.Bounds.X + g.Bounds.Width/2) - lm,
+		Y: (g.Bounds.Y + g.Bounds.Height/2) - float32(g.FontSize/2),
+	}
+
+	rl.DrawTextEx(g.Font, b.Label, pos, float32(g.FontSize), 0, g.FontColor)
 }

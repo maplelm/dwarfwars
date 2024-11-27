@@ -12,9 +12,8 @@ import (
 )
 
 type Scene struct {
-	form *gui.TextboxGroup
-	Menu button.List
-	//Menu          gui.ButtonList
+	form          *gui.TextboxGroup
+	Menu          *button.List
 	minpasslength int
 	back          bool
 	initialized   bool
@@ -36,7 +35,7 @@ func (s *Scene) Init(g *game.Game) error {
 	s.form.Center()
 
 	//s.Menu = *gui.NewButtonList(raygui.GetFont(), rl.NewRectangle(400, 100, 100, 50), 2, nil)
-	s.Menu = *button.NewList(rl.Vector2{X: 400, Y: 100}, raygui.GetFont(), 2, 1, 2, rl.Black, rl.Green, 32, rl.Black, rl.Vector2{X: 150, Y: 50})
+	s.Menu = button.NewList(rl.Vector2{X: 100, Y: 100}, rl.Vector2{X: 150, Y: 50}, 2, 1, 32, rl.Black, rl.Blue, rl.Black, raygui.GetFont())
 	s.Menu.Add("Back", func() { g.PopScene() })
 	s.Menu.Add("Password", func() {
 		val, _ := s.form.ValueByLabel("Password")

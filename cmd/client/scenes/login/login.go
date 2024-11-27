@@ -22,7 +22,7 @@ func New() *Scene {
 func (s *Scene) Init(g *game.Game) error {
 	defer func() { s.init = true }()
 
-	s.menu = button.NewList(rl.Vector2{X: 100, Y: 100}, raygui.GetFont(), 2, 1, 2, rl.Black, rl.Blue, 32, rl.Black, rl.Vector2{X: 150, Y: 50})
+	s.menu = button.NewList(rl.Vector2{X: 100, Y: 100}, rl.Vector2{X: 150, Y: 50}, 2, 1, 32, rl.Black, rl.Blue, rl.Black, raygui.GetFont())
 	s.menu.Add("Back", func() { g.PopScene() })
 	s.menu.Add("Login", func() { fmt.Println("This is where you would login") })
 
