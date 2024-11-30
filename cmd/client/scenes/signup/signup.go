@@ -3,16 +3,17 @@ package signup
 import (
 	"fmt"
 
-	"github.com/gen2brain/raylib-go/raygui"
+	//"github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
-	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
+
+	//"github.com/maplelm/dwarfwars/cmd/client/pkg/gui"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui/button"
 	"github.com/maplelm/dwarfwars/pkg/command"
 )
 
 type Scene struct {
-	form          *gui.TextboxGroup
+	//form          *gui.TextboxGroup
 	Menu          *button.List
 	minpasslength int
 	back          bool
@@ -26,20 +27,22 @@ func New() *Scene {
 func (s *Scene) Init(g *game.Game) error {
 	defer func() { s.initialized = true }()
 	fmt.Println("signin init")
-	s.form = gui.NewTextboxGroup(rl.NewRectangle(100, 100, 200, 20), 255, 10, rl.Black)
-	s.form.AddMulti([]gui.Textbox{
-		gui.InitTextbox(s.form.Size, "Username", false, false, true, 0.9, 2),
-		gui.InitTextbox(s.form.Size, "Password", true, false, false, 0.9, 2),
-		gui.InitTextbox(s.form.Size, "Email", false, true, false, 0.9, 2),
-	})
-	s.form.Center()
+	/*
+		s.form = gui.NewTextboxGroup(rl.NewRectangle(100, 100, 200, 20), 255, 10, rl.Black)
+		s.form.AddMulti([]gui.Textbox{
+			gui.InitTextbox(s.form.Size, "Username", false, false, true, 0.9, 2),
+			gui.InitTextbox(s.form.Size, "Password", true, false, false, 0.9, 2),
+			gui.InitTextbox(s.form.Size, "Email", false, true, false, 0.9, 2),
+		})
+		s.form.Center()
+	*/
 
 	//s.Menu = *gui.NewButtonList(raygui.GetFont(), rl.NewRectangle(400, 100, 100, 50), 2, nil)
-	s.Menu = button.NewList(rl.Vector2{X: 100, Y: 100}, rl.Vector2{X: 150, Y: 50}, 2, 1, 32, rl.Black, rl.Blue, rl.Black, raygui.GetFont())
+	s.Menu = button.NewList(rl.Vector2{X: 100, Y: 100}, rl.Vector2{X: 150, Y: 50}, 2, 1, 32, rl.Black, rl.Blue, rl.Black, g.DefaultFont)
 	s.Menu.Add("Back", func() { g.PopScene() })
 	s.Menu.Add("Password", func() {
-		val, _ := s.form.ValueByLabel("Password")
-		fmt.Println("Password Data: ", val)
+		//val, _ := s.form.ValueByLabel("Password")
+		fmt.Println("Password Data: ", "Null")
 	})
 	/*
 		s.Menu.AddMulti([]gui.Button{
@@ -69,7 +72,7 @@ func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
 }
 func (s *Scene) Draw() error {
 
-	s.form.Draw()
+	//s.form.Draw()
 	s.Menu.Draw()
 	return nil
 }

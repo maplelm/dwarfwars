@@ -1,5 +1,6 @@
 package gui
 
+/*
 import (
 	"fmt"
 	//"strings"
@@ -121,3 +122,4 @@ func (tbg *TextboxGroup) Draw() {
 
 func (tbg *TextboxGroup) Center() {
 }
+*/

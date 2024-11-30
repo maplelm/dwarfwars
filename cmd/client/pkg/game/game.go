@@ -40,28 +40,29 @@ type Game struct {
 
 	ScreenSize rl.Vector2
 
+	// User Preferences
 	Opts *cache.Cache[types.Options]
 
-	Paused bool
-
-	networkWait sync.WaitGroup
-	connected   bool
-	connecting  bool
-	ReadQueue   chan *command.Command
-	WriteQueue  chan *command.Command
-
+	// State
+	Paused   bool
 	Ctx      context.Context
 	ctxClose func()
 
+	// GUI & Graphcis
+	SWidth      int
+	SHeight     int
+	Scale       float32
+	DefaultFont rl.Font
+
+	// Networking
+	networkWait     sync.WaitGroup
+	connected       bool
+	connecting      bool
+	ReadQueue       chan *command.Command
+	WriteQueue      chan *command.Command
 	NetworkCtx      context.Context
 	NetworkCtxClose func()
-
-	SWidth  int
-	SHeight int
-
-	ServerID uint32
-
-	Scale float32
+	ServerID        uint32
 }
 
 func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], scale float32, Scenes []Scene) *Game {
@@ -106,6 +107,7 @@ func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options
 		ctxClose:        cc,
 		NetworkCtx:      nctx,
 		NetworkCtxClose: ncc,
+		DefaultFont:     rl.LoadFontEx(filepath.Join("./assets/fonts/", opts.MustGet().General.Font), opts.MustGet().General.FontRes, nil),
 	}
 }
 

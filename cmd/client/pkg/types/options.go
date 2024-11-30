@@ -9,8 +9,9 @@ type Options struct {
 		ScreenHeight float32 `toml:"Screen_Height"`
 		TargetFPS    int32   `toml:"FPS"`
 		Font         string  `toml:"Default_Font"`
-		FontSize     int32   `toml:"Default_Font_Size`
+		FontSize     int32   `toml:"Default_Font_Size"`
 		FontRes      int32   `toml:"Default_Font_Resolution"`
+		FontSpacing  int32   `toml:"Default_Font_Spacing"`
 	} `toml:"General_Settings"`
 
 	Network struct {
