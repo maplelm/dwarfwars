@@ -80,11 +80,11 @@ func (s *Scene) Init(g *game.Game) error {
 		s.Font,
 	)
 	s.Menu.Add("Connect", func() { Connect(g) })
-	s.Menu.Add("Quit", func() { rl.CloseWindow() })
+	s.Menu.Add("Quit", func() { g.Quitting = true })
 	s.Menu.Add("Sign Up", func() { g.PushScene(signup.New()) })
 	s.Menu.Add("Login", func() { g.PushScene(login.New()) })
 	s.Menu.ButtonSize = rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6}
-	menusize := s.Menu.Size()
+	menusize := s.Menu.Size
 	s.Menu.Position = rl.Vector2{
 		X: s.ScreenSize.X/2 - menusize.X/2,
 		Y: s.ScreenSize.Y/2 - menusize.Y/2,
@@ -105,7 +105,7 @@ func (s *Scene) IsInitialized() bool { return s.init }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-	s.Menu.Update()
+	s.Menu.Update(g.MP)
 	return nil
 }
 
@@ -140,7 +140,7 @@ func (s *Scene) OnResize() error {
 	// Re-Center button Cluster
 	s.Menu.ButtonSize.X = s.ScreenSize.X / 6
 	s.Menu.ButtonSize.Y = s.ScreenSize.Y / 8
-	menusize := s.Menu.Size()
+	menusize := s.Menu.Size
 	s.Menu.Position = rl.Vector2{
 		X: s.ScreenSize.X/2 - menusize.X/2,
 		Y: s.ScreenSize.Y/2 - menusize.Y/2,

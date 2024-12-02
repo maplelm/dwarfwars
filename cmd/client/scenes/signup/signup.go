@@ -64,7 +64,7 @@ func (s *Scene) Init(g *game.Game) error {
 func (s *Scene) IsInitialized() bool          { return s.initialized }
 func (s *Scene) UserInput(g *game.Game) error { return nil }
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-	s.Menu.Update()
+	s.Menu.Update(g.MP)
 	return nil
 }
 func (s *Scene) Draw() error {

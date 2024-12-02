@@ -75,6 +75,10 @@ eventloop:
 	return f.Disconnect(c.uid)
 }
 
+/*
+Default Message dispatcher for clients
+clients are designed to switch dispatchers as they swap contexts (what they are doing)
+*/
 func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logger) error {
 	for {
 		select {
@@ -92,6 +96,9 @@ func (f *Factory) DispatchIncomingCommands(ctx context.Context, logger *log.Logg
 			switch cmd.Type {
 			case command.TypeLobbyJoinRequest:
 			case command.TypeLobbyLeaveRequest:
+			case command.TypeRegister:
+
+			case command.TypeLogin:
 			case command.TypeWorldData, command.TypeWorldUpdate:
 				// Error State, Client should be passed to a Game Instance Rather then the Dispatcher by the time these messages are being Send
 			case command.TypeEcho:

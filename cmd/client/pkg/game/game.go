@@ -39,6 +39,7 @@ type Game struct {
 	activeScene int
 
 	ScreenSize rl.Vector2
+	MP         rl.Vector2
 
 	Opts *cache.Cache[types.Options]
 
@@ -62,11 +63,14 @@ type Game struct {
 	ServerID uint32
 
 	Scale float32
+
+	Quitting bool
 }
 
 func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], scale float32, Scenes []Scene) *Game {
 	rl.SetConfigFlags(rl.FlagWindowResizable)
 	rl.InitWindow(int32(screenx), int32(screeny), title)
+	rl.SetExitKey(0)
 	ctx, cc := context.WithCancel(context.Background())
 	nctx, ncc := context.WithCancel(ctx)
 	return &Game{
@@ -106,6 +110,7 @@ func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options
 		ctxClose:        cc,
 		NetworkCtx:      nctx,
 		NetworkCtxClose: ncc,
+		Quitting:        false,
 	}
 }
 
@@ -200,14 +205,22 @@ func (g *Game) Run() {
 		}
 	}
 
+	g.Quitting = false
+
 	// Main Game Loop
-	for !rl.WindowShouldClose() || (rl.WindowShouldClose() && rl.IsKeyPressed(rl.KeyEscape)) {
+	for !rl.WindowShouldClose() && !g.Quitting {
+		g.SystemUpdate()
 		g.UserInput() // will not work while game is paused
 		g.Update()    // will not work while game is paused
 		g.Draw()      // Draw the overlay after calling the scene's draw function
 	}
 
 }
+
+func (g *Game) SystemUpdate() {
+	g.MP = rl.GetMousePosition()
+}
+
 func (g *Game) UserInput() {
 
 	// Pause the game if the p key is pressed

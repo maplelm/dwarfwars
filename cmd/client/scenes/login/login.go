@@ -36,7 +36,7 @@ func (s *Scene) UserInput(g *game.Game) error {
 }
 
 func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
-	s.menu.Update()
+	s.menu.Update(g.MP)
 	return nil
 }
 

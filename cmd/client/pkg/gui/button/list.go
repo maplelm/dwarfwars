@@ -17,6 +17,8 @@ type List struct {
 	Buttons         []Button
 	Columns         int32
 	Font            rl.Font
+
+	Size rl.Vector2
 }
 
 func NewList(p, buttonsize rl.Vector2, cols, borderwidth, fontsize int32, bordercolor, foreground, fontcolor rl.Color, f rl.Font) *List {
@@ -40,6 +42,7 @@ func (l *List) Add(lab string, a func()) int {
 		Clicked: false,
 		Action:  a,
 	})
+	l.Size = l.size()
 	return len(l.Buttons)
 }
 
@@ -47,7 +50,10 @@ func (l *List) Move(v rl.Vector2) {
 	l.Position = rl.Vector2Add(l.Position, v)
 }
 
-func (l *List) Update() {
+func (l *List) Update(mp rl.Vector2) {
+	if !l.IsHovered(mp) {
+		return
+	}
 	for i, b := range l.Buttons {
 		doubleBW := float32(l.BorderWidth) * 2
 		localX := (float32(int32(i) % l.Columns)) * (float32(l.ButtonSize.X + doubleBW))
@@ -62,7 +68,11 @@ func (l *List) Update() {
 	}
 }
 
-func (l *List) Size() rl.Vector2 {
+func (l *List) IsHovered(mp rl.Vector2) bool {
+	return !(mp.X < l.Position.X || mp.X > l.Position.X+l.Size.X || mp.Y < l.Position.Y || mp.Y > l.Position.Y+l.Size.Y)
+}
+
+func (l *List) size() rl.Vector2 {
 	var (
 		w          float32
 		h          float32

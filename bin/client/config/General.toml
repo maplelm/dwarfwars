@@ -6,8 +6,8 @@ FullScreen = false
 # 2K  | 1440p - 2560x1440
 # 4K  | 2160p - 3840x2160
 # 8K  | 4320p - 7680x4320
-Screen_Width = 2560
-Screen_Height = 1440 
+Screen_Width = 1920
+Screen_Height = 1080 
 FPS = 60
 Default_Font = "AlmendraSC-Regular.ttf"
 Default_Font_Size = 100 # Height in pixels
