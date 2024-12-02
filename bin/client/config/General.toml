@@ -12,6 +12,7 @@ FPS = 60
 Default_Font = "AlmendraSC-Regular.ttf"
 Default_Font_Size = 100 # Height in pixels
 Default_Font_Resolution = 400
+Default_Font_Spacing = 0
 
 [Network_Settings]
 Address = "127.0.0.1"

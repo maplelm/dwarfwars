@@ -3,7 +3,7 @@ package login
 import (
 	"fmt"
 
-	"github.com/gen2brain/raylib-go/raygui"
+	//"github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/game"
 	"github.com/maplelm/dwarfwars/cmd/client/pkg/gui/button"
@@ -22,7 +22,7 @@ func New() *Scene {
 func (s *Scene) Init(g *game.Game) error {
 	defer func() { s.init = true }()
 
-	s.menu = button.NewList(rl.Vector2{X: 100, Y: 100}, rl.Vector2{X: 150, Y: 50}, 2, 1, 32, rl.Black, rl.Blue, rl.Black, raygui.GetFont())
+	s.menu = button.NewList(rl.Vector2{X: 100, Y: 100}, rl.Vector2{X: 150, Y: 50}, 2, 1, 32, rl.Black, rl.Blue, rl.Black, g.DefaultFont)
 	s.menu.Add("Back", func() { g.PopScene() })
 	s.menu.Add("Login", func() { fmt.Println("This is where you would login") })
 
