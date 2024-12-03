@@ -48,6 +48,7 @@ type Game struct {
 	Paused   bool
 	Ctx      context.Context
 	ctxClose func()
+	Quitting bool
 
 	// GUI & Graphcis
 	SWidth      int
@@ -61,17 +62,9 @@ type Game struct {
 	connecting      bool
 	ReadQueue       chan *command.Command
 	WriteQueue      chan *command.Command
+	ServerID        uint32
 	NetworkCtx      context.Context
 	NetworkCtxClose func()
-
-	SWidth  int
-	SHeight int
-
-	ServerID uint32
-
-	Scale float32
-
-	Quitting bool
 }
 
 func New(screenx, screeny float32, title string, opts *cache.Cache[types.Options], scale float32, Scenes []Scene) *Game {

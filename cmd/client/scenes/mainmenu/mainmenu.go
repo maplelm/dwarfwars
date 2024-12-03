@@ -65,6 +65,9 @@ func (s *Scene) Init(g *game.Game) error {
 
 	// Interface Element Setups
 	a, err := engine.NewAnimationMatrix(3, 1, 3, 0, rl.LoadTexture("./assets/"), rl.Vector2{X: 32, Y: 32}, rl.White, nil)
+	if err != nil {
+		fmt.Printf("Warning Failed to Create New Animation Matrix, %s\n", err)
+	}
 
 	s.testimagebutton = *button.NewImageButton("Sign in", func() { g.PushScene(signup.New()) }, rl.NewRectangle(100, 100, 300, 100), *a, 0, rl.Black, rl.Font{}, 32, rl.Black)
 
@@ -83,8 +86,8 @@ func (s *Scene) Init(g *game.Game) error {
 	s.Menu.Add("Quit", func() { g.Quitting = true })
 	s.Menu.Add("Sign Up", func() { g.PushScene(signup.New()) })
 	s.Menu.Add("Login", func() { g.PushScene(login.New()) })
-	s.Menu.ButtonSize = rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6}
-	menusize := s.Menu.Size
+	s.Menu.SetButtonSize(rl.Vector2{X: s.ScreenSize.X / 8, Y: s.ScreenSize.Y / 6})
+	menusize := s.Menu.Size()
 	s.Menu.Position = rl.Vector2{
 		X: s.ScreenSize.X/2 - menusize.X/2,
 		Y: s.ScreenSize.Y/2 - menusize.Y/2,
@@ -93,6 +96,7 @@ func (s *Scene) Init(g *game.Game) error {
 	// Connect to the Network
 	if err = Connect(g); err != nil {
 		fmt.Printf("Warning: Failed to connect to server, %s\n", err)
+		err = nil
 	}
 
 	// Init Finished
@@ -111,7 +115,9 @@ func (s *Scene) Update(g *game.Game, cmds []*command.Command) error {
 
 func (s *Scene) Draw() error {
 	rl.DrawRectangle(0, 0, int32(rl.GetScreenWidth()), int32(rl.GetScreenHeight()), rl.Brown)
+
 	s.Menu.Draw()
+
 	sizing := rl.MeasureTextEx(s.Font, "Dwarf  Wars", 100, 0)
 	rl.DrawTextEx(s.Font,
 		"Dwarf  Wars",
@@ -123,6 +129,7 @@ func (s *Scene) Draw() error {
 		0,
 		rl.Black,
 	)
+
 	return nil
 
 }
@@ -138,9 +145,8 @@ func (s *Scene) OnResize() error {
 	}
 
 	// Re-Center button Cluster
-	s.Menu.ButtonSize.X = s.ScreenSize.X / 6
-	s.Menu.ButtonSize.Y = s.ScreenSize.Y / 8
-	menusize := s.Menu.Size
+	s.Menu.SetButtonSize(rl.Vector2{X: s.ScreenSize.X / 6, Y: s.ScreenSize.Y / 8})
+	menusize := s.Menu.Size()
 	s.Menu.Position = rl.Vector2{
 		X: s.ScreenSize.X/2 - menusize.X/2,
 		Y: s.ScreenSize.Y/2 - menusize.Y/2,

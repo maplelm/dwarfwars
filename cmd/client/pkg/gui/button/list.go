@@ -8,7 +8,6 @@ import (
 
 type List struct {
 	Position        rl.Vector2
-	ButtonSize      rl.Vector2
 	BorderWidth     int32
 	BorderColor     rl.Color
 	FontSize        int32
@@ -18,13 +17,14 @@ type List struct {
 	Columns         int32
 	Font            rl.Font
 
-	Size rl.Vector2
+	size       rl.Vector2 // Cache this value as it is complex to calculate
+	buttonsize rl.Vector2
 }
 
 func NewList(p, buttonsize rl.Vector2, cols, borderwidth, fontsize int32, bordercolor, foreground, fontcolor rl.Color, f rl.Font) *List {
 	return &List{
 		Position:        p,
-		ButtonSize:      buttonsize,
+		buttonsize:      buttonsize,
 		Font:            f,
 		Columns:         cols,
 		Buttons:         make([]Button, 0),
@@ -42,12 +42,27 @@ func (l *List) Add(lab string, a func()) int {
 		Clicked: false,
 		Action:  a,
 	})
-	l.Size = l.size()
+	l.size = l.Size()
 	return len(l.Buttons)
 }
 
 func (l *List) Move(v rl.Vector2) {
 	l.Position = rl.Vector2Add(l.Position, v)
+}
+
+func (l *List) SetButtonSize(s rl.Vector2) {
+	l.buttonsize = s
+	l.size = l.Size()
+}
+
+func (l *List) SetButtonSizeX(x float32) {
+	l.buttonsize.X = x
+	l.size = l.Size()
+}
+
+func (l *List) SetButtonSizeY(y float32) {
+	l.buttonsize.Y = y
+	l.size = l.Size()
 }
 
 func (l *List) Update(mp rl.Vector2) {
@@ -56,55 +71,52 @@ func (l *List) Update(mp rl.Vector2) {
 	}
 	for i, b := range l.Buttons {
 		doubleBW := float32(l.BorderWidth) * 2
-		localX := (float32(int32(i) % l.Columns)) * (float32(l.ButtonSize.X + doubleBW))
-		localY := float32(math.Floor(float64(float32(i)/float32(l.Columns)))) * (l.ButtonSize.Y + doubleBW)
+		localX := (float32(int32(i) % l.Columns)) * (float32(l.buttonsize.X + doubleBW))
+		localY := float32(math.Floor(float64(float32(i)/float32(l.Columns)))) * (l.buttonsize.Y + doubleBW)
 
-		b.UpdateWithBounds(rl.NewRectangle(
+		b.UpdateWithBounds(mp, rl.NewRectangle(
 			l.Position.X+localX,
 			l.Position.Y+localY,
-			l.ButtonSize.X,
-			l.ButtonSize.Y,
+			l.buttonsize.X,
+			l.buttonsize.Y,
 		))
 	}
 }
 
 func (l *List) IsHovered(mp rl.Vector2) bool {
-	return !(mp.X < l.Position.X || mp.X > l.Position.X+l.Size.X || mp.Y < l.Position.Y || mp.Y > l.Position.Y+l.Size.Y)
+	return mp.X > l.Position.X && mp.X < l.Position.X+l.size.X && mp.Y > l.Position.Y && mp.Y < l.Position.Y+l.size.Y
 }
 
-func (l *List) size() rl.Vector2 {
+func (l *List) Size() rl.Vector2 {
+	if len(l.Buttons) == 0 {
+		return rl.Vector2{X: 0, Y: 0}
+	}
+
 	var (
-		w          float32
-		h          float32
-		trueWidth  float32 = (l.ButtonSize.X + (float32(l.BorderWidth) * 2))
-		trueHeight float32 = (l.ButtonSize.Y + (float32(l.BorderWidth) * 2))
-		rows       float32 = float32(math.Floor(float64(len(l.Buttons)) / float64(l.Columns)))
+		s         rl.Vector2
+		btnWidth  float32 = (l.buttonsize.X + (float32(l.BorderWidth) * 2)) + 1
+		btnHeight float32 = (l.buttonsize.Y + (float32(l.BorderWidth) * 2)) + 1
+		rows      float32 = float32(math.Floor(float64(len(l.Buttons)) / float64(l.Columns)))
 	)
 
 	if len(l.Buttons) >= int(l.Columns) {
-		w = float32(l.Columns) * trueWidth
+		s.X = float32(l.Columns) * btnWidth
 	} else {
-		w = float32(len(l.Buttons)) * trueWidth
+		s.X = float32(len(l.Buttons)) * btnWidth
 	}
 
-	if len(l.Buttons) == 0 {
-		h = 0
-	} else {
-		h = trueHeight + trueHeight*rows
-	}
-	return rl.Vector2{
-		X: w,
-		Y: h,
-	}
+	s.Y = btnHeight * rows
+
+	return s
 }
 
 func (l *List) Draw() {
 	for i, v := range l.Buttons {
 		doubleBW := float32(l.BorderWidth) * 2
-		localX := (float32(int32(i) % l.Columns)) * (float32(l.ButtonSize.X + doubleBW))
-		localY := float32(math.Floor(float64(float32(i)/float32(l.Columns)))) * (l.ButtonSize.Y + doubleBW)
+		localX := (float32(int32(i) % l.Columns)) * (float32(l.buttonsize.X + doubleBW))
+		localY := float32(math.Floor(float64(float32(i)/float32(l.Columns)))) * (l.buttonsize.Y + doubleBW)
 
-		v.DrawWithGraphics(*NewbGraphics(rl.NewRectangle(l.Position.X+localX, l.Position.Y+localY, l.ButtonSize.X, l.ButtonSize.Y), l.BorderWidth, l.BorderColor, l.ForegroundColor, l.Font, l.FontSize, l.FontColor))
+		v.DrawWithGraphics(*NewbGraphics(rl.NewRectangle(l.Position.X+localX, l.Position.Y+localY, l.buttonsize.X, l.buttonsize.Y), l.BorderWidth, l.BorderColor, l.ForegroundColor, l.Font, l.FontSize, l.FontColor))
 
 	}
 }

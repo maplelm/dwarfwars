@@ -45,12 +45,12 @@ func New(l string, a func(), graphics *bGraphics) *Button {
 	}
 }
 
-func (b *Button) Update() error {
+func (b *Button) Update(mp rl.Vector2) error {
 	if b.Graphics == nil {
 		return gui.ErrNoGraphics("button update failed, must use UpdateWithBounds if Graphics is nil")
 	}
 
-	if b.MustIsHovered() && rl.IsMouseButtonPressed(rl.MouseLeftButton) && b.Clicked == false {
+	if b.MustIsHovered(mp) && rl.IsMouseButtonPressed(rl.MouseLeftButton) && b.Clicked == false {
 		b.Action()
 		b.Clicked = true
 	} else if rl.IsMouseButtonReleased(rl.MouseLeftButton) && b.Clicked == true {
@@ -59,8 +59,8 @@ func (b *Button) Update() error {
 	return nil
 }
 
-func (b *Button) UpdateWithBounds(bounds rl.Rectangle) {
-	if b.IsHoveredWithBounds(bounds) && rl.IsMouseButtonPressed(rl.MouseLeftButton) && b.Clicked == false {
+func (b *Button) UpdateWithBounds(mp rl.Vector2, bounds rl.Rectangle) {
+	if b.IsHoveredWithBounds(mp, bounds) && rl.IsMouseButtonPressed(rl.MouseLeftButton) && b.Clicked == false {
 		b.Action()
 		b.Clicked = true
 	} else if rl.IsMouseButtonReleased(rl.MouseLeftButton) && b.Clicked == true {
@@ -68,30 +68,29 @@ func (b *Button) UpdateWithBounds(bounds rl.Rectangle) {
 	}
 }
 
-func (b *Button) IsHovered() (bool, error) {
+func (b *Button) IsHovered(mp rl.Vector2) (bool, error) {
 	if b.Graphics == nil {
 		return false, gui.ErrNoGraphics("button IsHovered failed, must use IsHoveredWithBounds if Graphics is nil")
 	}
-	return b.IsHoveredWithBounds(b.Graphics.Bounds), nil
+	return b.IsHoveredWithBounds(mp, b.Graphics.Bounds), nil
 }
 
-func (b *Button) MustIsHovered() bool {
+func (b *Button) MustIsHovered(mp rl.Vector2) bool {
 	if b.Graphics == nil {
 		panic(gui.ErrNoGraphics("button IsHovered failed, must use IsHoveredWithBounds if Graphics is nil"))
 	}
-	return b.IsHoveredWithBounds(b.Graphics.Bounds)
+	return b.IsHoveredWithBounds(mp, b.Graphics.Bounds)
 }
 
-func (b *Button) IsHoveredWithBounds(bounds rl.Rectangle) bool {
-	mp := rl.GetMousePosition()
+func (b *Button) IsHoveredWithBounds(mp rl.Vector2, bounds rl.Rectangle) bool {
 	return mp.X > bounds.X && mp.X < bounds.X+bounds.Width && mp.Y > bounds.Y && mp.Y < bounds.Y+bounds.Height
 }
 
-func (b *Button) Draw() error {
+func (b *Button) Draw(mp rl.Vector2) error {
 	if b.Graphics == nil {
 		return gui.ErrNoGraphics("button draw failed, must use DrawWithGraphics if Grphics is null")
 	}
-	if b.MustIsHovered() {
+	if b.MustIsHovered(mp) {
 		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
 			// Button Clicked on
 			g := *b.Graphics
