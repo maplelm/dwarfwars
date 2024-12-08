@@ -21,8 +21,8 @@ world goruitines.
 type Client struct {
 
 	// Client State
-	Account        *Account
-	GameInstanceID uint32 // What game the client is currently engaged with
+	Account        *Account // Links client with a game account
+	GameInstanceID uint32   // What game the client is currently engaged with
 
 	// Network Connection State
 	sendToInternal chan<- *command.Command // Channel the client will use to send message received from connection to an internal system within the server

@@ -97,6 +97,30 @@ implement this yet But I am thinking that it will be a matter of swapping out
 the channel that the client object has to point to a game instance rather then
 the dispatcher.
 
+#### Simulation Or Game
+
+I need to figure out if I want this to be a game or a simulation because based
+on that decision I can start making the server and client that will aid in the
+process of making this. Currently I think I amtrying to make a game with the
+idea of a simulation.
+
+#### Structure
+
+- Server
+- Clients Connect
+  - Client Pool (Client Factory)
+- Connected But not in game
+  - Look at Games (Lobbies) going on and there stats
+  - Look up other users
+    - Stats
+    - Current active worlds (lobbies) they are in
+    - Send Friend Requests
+    - Message Other Users
+  - Look at the Events and notifications that are going on
+- Game (Lobby)
+  - Private Game
+  - Public Game
+
 ### Frontend
 
 The Front end will be written in Go as well as the backend. This is to enable

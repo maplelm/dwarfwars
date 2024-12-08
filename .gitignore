@@ -48,6 +48,7 @@ buildtool*
 __debug*
 **/__debug*
 
+# MacOs Generated Files
 **/.DS_Store
 
 # debug binary files

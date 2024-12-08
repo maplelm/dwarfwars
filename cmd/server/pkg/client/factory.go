@@ -39,6 +39,9 @@ func NewFactory(idsize uint32, tor, tpr time.Duration) *Factory {
 	}
 }
 
+/*
+Monitoring Per Client. This function will end when the client it is monitoring is finished
+*/
 func (f *Factory) Monitor(ctx context.Context, c *Client, logger *log.Logger, wgrp *sync.WaitGroup) error {
 	wgrp.Add(1)
 	defer wgrp.Done()

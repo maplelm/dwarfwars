@@ -92,7 +92,7 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 		s      *server.Server
 		clistd *log.Logger = log.New(os.Stdout, "Dwarf Wars Server: ", 0)
 		clierr *log.Logger = log.New(os.Stderr, "Error: ", 0)
-		input  *string     = new(string)
+		input  string
 	)
 
 	logger.Println("Server Mode: Headless")
@@ -128,10 +128,10 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 	// Listening for commands from CLI
 	for {
 		clistd.Printf("(Input)")
-		if _, err := fmt.Scanln(input); err != nil {
+		if _, err := fmt.Scanln(&input); err != nil {
 			clierr.Printf("Failed to Read user input: %s", err)
 		} else {
-			switch *input {
+			switch input {
 			case "stop", "quit":
 				clistd.Printf("Shutting Down")
 				return nil
@@ -140,11 +140,10 @@ func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
 				for _, v := range s.Clients() {
 					clistd.Printf("\t%d", v)
 				}
-				// list Connections
 			case "count":
-				//fmt.Printf("Connections: %d\n", len(server.Connections))
+				fmt.Printf("Connections: %d\n", len(server.Connections))
 			default:
-				clierr.Printf("Invalid input (%s)\n", *input)
+				clierr.Printf("Invalid input (%s)\n", input)
 			}
 		}
 	}
