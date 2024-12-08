@@ -1,9 +1,11 @@
-CREATE DATABASE IF NOT EXISTS DWARF_WARS 
+-- Dwarf Wars Database (World tracking, directory tracking, ...)
+CREATE DATABASE IF NOT EXISTS DW 
 	DEFAULT CHARACTER SET = 'utf8mb4'
 	DEFAULT COLLATE = 'utf8mb4_unicode_ci'
 ;
 
-CREATE DATABASE IF NOT EXISTS DWARF_WARS_SECURITY
+-- Dwarf Wars Security Database (Accounts, SSO, 2FA, ...)
+CREATE DATABASE IF NOT EXISTS DWS
 	DEFAULT CHARACTER SET = 'utf8mb4'
 	DEFAULT COLLATE = 'utf8mb4_unicode_ci'
 ;
