@@ -4,7 +4,6 @@ go 1.22.1
 
 require (
 	github.com/BurntSushi/toml v1.4.0
-	github.com/gen2brain/raylib-go/raygui v0.0.0-20241024060513-f2ab1b0c358a
 	github.com/gen2brain/raylib-go/raylib v0.0.0-20241014163942-bf5ef1835077
 	github.com/go-sql-driver/mysql v1.8.1
 	golang.org/x/time v0.7.0
