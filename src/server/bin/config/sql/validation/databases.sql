@@ -4,7 +4,7 @@ CREATE DATABASE IF NOT EXISTS DW
 	DEFAULT COLLATE = 'utf8mb4_unicode_ci'
 ;
 
--- Dwarf Wars Security Database (Accounts, SSO, 2FA, ...)
+-- Dwarf Wars Security Database (Accounts, Checksums, ...)
 CREATE DATABASE IF NOT EXISTS DWS
 	DEFAULT CHARACTER SET = 'utf8mb4'
 	DEFAULT COLLATE = 'utf8mb4_unicode_ci'

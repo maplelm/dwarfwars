@@ -2,11 +2,14 @@ package types
 
 type Options struct {
 	Logging struct {
-		MaxSize int    `toml:"Size"`
-		Name    string `toml:"Name"`
-		Path    string `toml:"Path"`
-		Prefix  string `toml:"Prefix"`
-		Flags   struct {
+		MaxSize     int    `toml:"Size"`
+		MaxAge      int    `toml:"Max_Age"`
+		Backups     int    `toml:"Backups"`
+		Compression bool   `toml:"Compression"`
+		Name        string `toml:"Name"`
+		Path        string `toml:"Path"`
+		Prefix      string `toml:"Prefix"`
+		Flags       struct {
 			UTC          bool `toml:"UTC"`
 			Date         bool `toml:"Date"`
 			Time         bool `toml:"Time"`
@@ -28,10 +31,8 @@ type Options struct {
 	} `toml:"Game Server"`
 
 	Db struct {
-		Addr          string `toml:"Server Address"`
-		Port          int    `toml:"Server Port"`
-		Username      string `toml:"Server Username"`
-		Password      string `toml:"Server Password"`
-		ValidationDir string `toml:"Validation Direcroty"`
+		BaseDir  string  `toml:"Base_Dir"`
+		Password *string `toml:"Password"`
+		Querries string  `toml:"Querries_Dir"`
 	} `toml:"DB"`
 }
