@@ -1,7 +1,10 @@
 [Logging]
-Size                = 5         # MB
-Name                = "log.log" # Name of file to push logs to
-Path                = "./logs/" # Path for the above file is located
+Size                = 5  # MB
+Max_Age		    = 10 # days
+Backups 	    = 5
+Compression    	    = false
+Name                = "log.log"
+Path                = "./logs/"
 Prefix              = "Server: "
 
 [Logging.Flags]
@@ -24,10 +27,6 @@ Write = 300 # Miliseconds
 
 
 [DB]
-"Server Address" = "127.0.0.1"
-"Server Port" = 3306
-# going to put this in a more secure location later on
-"Server Username" = "root"
-"Server Password" = "password"
-####
-"Validation Direcroty" = "./config/sql/validation/"
+BaseDir = "./databases/"
+#Password = "123"
+Querries_Dir ="./sql/"
