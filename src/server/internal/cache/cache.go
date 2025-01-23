@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -10,6 +11,7 @@ type Cache[T any] struct {
 	MaxAge      time.Duration
 	lastRefresh time.Time
 	refresher   func(*T) error
+	mut         *sync.Mutex
 }
 
 func New[T any](ma time.Duration, r func(*T) error) (*Cache[T], error) {
@@ -17,6 +19,7 @@ func New[T any](ma time.Duration, r func(*T) error) (*Cache[T], error) {
 		MaxAge:      ma,
 		lastRefresh: time.Now(),
 		refresher:   r,
+		mut:         new(sync.Mutex),
 	}
 	err := r(&c.data)
 	if err != nil {
@@ -26,6 +29,8 @@ func New[T any](ma time.Duration, r func(*T) error) (*Cache[T], error) {
 }
 
 func (c *Cache[T]) GetData() (T, error) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
 	if time.Since(c.lastRefresh) >= c.MaxAge {
 		err := c.refresher(&c.data)
 		if err != nil {
@@ -37,6 +42,8 @@ func (c *Cache[T]) GetData() (T, error) {
 }
 
 func (c *Cache[T]) MustGetData() T {
+	c.mut.Lock()
+	defer c.mut.Unlock()
 	if time.Since(c.lastRefresh) >= c.MaxAge {
 		if err := c.refresher(&c.data); err != nil {
 			panic(err)
@@ -47,6 +54,8 @@ func (c *Cache[T]) MustGetData() T {
 }
 
 func (c *Cache[T]) SetData(d T) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
 	c.data = d
 	c.lastRefresh = time.Now()
 }
@@ -56,6 +65,8 @@ func (c *Cache[T]) GetLastRefresh() time.Time {
 }
 
 func (c *Cache[T]) Refresh() error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
 	if err := c.refresher(&c.data); err != nil {
 		return err
 	}

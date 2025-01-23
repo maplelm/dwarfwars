@@ -8,12 +8,14 @@ import (
 	"os"
 	"sync"
 
+	"github.com/rs/zerolog"
+
 	"server/internal/cache"
 	"server/internal/server"
 	"server/internal/types"
 )
 
-func CliMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
+func CliMode(logger zerolog.Logger, opts *cache.Cache[types.Options]) error {
 	var (
 		err    error
 		addr   *net.TCPAddr

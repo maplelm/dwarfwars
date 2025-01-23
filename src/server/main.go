@@ -15,13 +15,11 @@ import (
 	// Third Party Packages
 	"github.com/BurntSushi/toml"
 	zl "github.com/rs/zerolog"
-	zlog "github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	ljack "gopkg.in/natefinch/lumberjack.v2"
 
 	// Project Packages
 	"server/internal/cache"
-	"server/internal/server"
 	"server/internal/types"
 
 	// Drivers
