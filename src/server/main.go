@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	fp "path/filepath"
 	"runtime"
@@ -49,10 +48,12 @@ func main() {
 		RuntimeCtx    context.Context
 		CancelRuntime func()
 
-		Databases []string = []string{"DW", "DWS"}
-
 		Opts cache.Cache[types.Options]
 	)
+
+	///////////////////////////
+	// Parsing CLI Arguments //
+	///////////////////////////
 	flag.Parse()
 
 	///////////////////////////////
@@ -70,11 +71,11 @@ func main() {
 
 		ld := Opts.MustGetData().Logging
 		MLog = zl.New(&ljack.Logger{
-			Filename:   fp.Join(ld.Path, ld.Name),
-			MaxSize:    ld.MaxSize, // megabytes
-			MaxBackups: ld.Backups,
+			MaxSize:    ld.MaxSize,     // megabytes
 			MaxAge:     ld.MaxAge,      //days
 			Compress:   ld.Compression, // disabled by default
+			Filename:   fp.Join(ld.Path, ld.Name),
+			MaxBackups: ld.Backups,
 		})
 	}
 
@@ -102,31 +103,26 @@ func main() {
 
 	}
 
-	// Validating the SQL Server
-	MLog.Info().Msg("Validating Database Before Server Bootup")
-	if err := ValidateSQL(RuntimeCtx, MLog, Opts); err != nil {
-		MLog.Fatal().Err(err).Msg("Failed to Validate SQL Server")
-	}
-
-	// Start Server
+	//////////////////
+	// Start Server //
+	//////////////////
 	if *headless {
-		if err := CliMode(MLog); err != nil {
+		if err := CliMode(RuntimeCtx, &MLog, &Opts); err != nil {
 			MLog.Err(err).Msg("Server ran into an error in CLI Mode")
 		}
 	} else {
-	}
-	switch *headless {
-	case true:
-		if err := CliMode(MainLogger, opts); err != nil {
-			MainLogger.Printf("Server Error: %s", err)
-		}
-	case false:
-		if err := TuiMode(MainLogger, opts); err != nil {
-			MainLogger.Printf("Server Error: %s", err)
+		if err := TuiMode(RuntimeCtx, &MLog, &Opts); err != nil {
+			MLog.Err(err).Msg("Server ran into an error in TUI Mode")
 		}
 	}
 
-	// Memory Profiling Code
+	//////////////
+	// Clean Up //
+	//////////////
+
+	///////////////////////////
+	// Memory Profiling Code //
+	///////////////////////////
 	if *profile {
 		runtime.GC()
 		fm, err := os.Create("memoryprofile.txt")
@@ -140,10 +136,6 @@ func main() {
 	}
 }
 
-func TuiMode(logger *log.Logger, opts *cache.Cache[types.Options]) error {
-	logger.Println("Server Mode: Interactive")
-	return nil
-}
 func OptsSetup() cache.Cache[types.Options] {
 	r, e := cache.New(time.Second*time.Duration(5), func(o *types.Options) error {
 		if o == nil {
