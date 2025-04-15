@@ -22,6 +22,7 @@ import (
 	"server/internal/types"
 
 	// Drivers
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -43,12 +44,12 @@ var ()
 func main() {
 
 	var (
-		MLog zl.Logger
+		MLog zl.Logger // Main Logging Object
 
-		RuntimeCtx    context.Context
+		RuntimeCtx    context.Context // Main Context for the Server. everything should close down if this context is canceled
 		CancelRuntime func()
 
-		Opts cache.Cache[types.Options]
+		Opts cache.Cache[types.Options] //Pulling in settings from settings files. most commonly toml files
 	)
 
 	///////////////////////////

@@ -4,17 +4,17 @@
 
 ### Theme
 
-+ High Fantasy
++ **High Fantasy**
   + World not comparable to our own
   + Lord of the Rings
   + Game of Thrones
   + Harry Potter (in the wizarding world)
 + Science Fantasy
 + Steampunk
-+ Mythic Fiction
++ **Mythic Fiction**
   + Deeply Religous and philisophical
   + full of Mystisium
-+ Dark Fantasy
++ **Dark Fantasy**
 + Grimdark
   + The Poppy Wars
 
@@ -44,9 +44,22 @@ Mostly trees
 
 #### Plants
 
+#### Furs
+
+#### Fibers
+
+#### Silks
+
 #### Chemicals
 
 ### World Attributes
 
-Tempature: Normal to real world Hot in the middle and temporate -> cold as you move away from the top and bottom
+#### Tempature
+
++ Real world model (Hot in the middle and gets colder as you move to the poles at the top and bottom)
++ Random Poll Generation and then calculate the spread from there.
+
+#### Time
+
+#### Day / Night Cycle 
 
